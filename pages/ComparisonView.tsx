@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ComparisonSession, BenefitCategory, BenefitItem } from '../types';
+import { ComparisonSession, BenefitCategory, BenefitItem, Provider } from '../types';
 import { Icons } from '../constants';
 
 interface ComparisonViewProps {
@@ -29,84 +29,113 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
     );
   }
 
-  const handleFieldChange = (key: string, value: any) => {
-    const updated = { ...session, [key]: value };
+  const handleUpdate = (updated: ComparisonSession) => {
     setSession(updated);
     onUpdate(updated);
   };
 
   const handleProfileChange = (key: string, value: string) => {
-    const updated = { 
+    handleUpdate({ 
       ...session, 
       clientProfile: { ...session.clientProfile, [key]: value } 
-    };
-    setSession(updated);
-    onUpdate(updated);
+    });
   };
 
-  const handleBenefitChange = (catIdx: number, itemIdx: number, key: 'valueA' | 'valueB' | 'label', value: string) => {
+  const handleProviderChange = (idx: number, key: keyof Provider, value: string) => {
+    const newProviders = [...session.providers];
+    newProviders[idx] = { ...newProviders[idx], [key]: value };
+    handleUpdate({ ...session, providers: newProviders });
+  };
+
+  const handleAddProvider = () => {
+    const newProviders = [...session.providers, { underwriter: 'New Provider', plan: 'New Plan' }];
+    // Update all benefit items to have an extra empty value for this new provider
+    const newCategories = session.categories.map(cat => ({
+      ...cat,
+      items: cat.items.map(item => ({
+        ...item,
+        values: [...item.values, '']
+      }))
+    }));
+    handleUpdate({ ...session, providers: newProviders, categories: newCategories });
+  };
+
+  const handleRemoveProvider = (idx: number) => {
+    if (session.providers.length <= 1) return;
+    const newProviders = [...session.providers];
+    newProviders.splice(idx, 1);
+    
+    const newCategories = session.categories.map(cat => ({
+      ...cat,
+      items: cat.items.map(item => {
+        const newValues = [...item.values];
+        newValues.splice(idx, 1);
+        return { ...item, values: newValues };
+      })
+    }));
+    handleUpdate({ ...session, providers: newProviders, categories: newCategories });
+  };
+
+  const handleBenefitLabelChange = (catIdx: number, itemIdx: number, value: string) => {
     const newCategories = [...session.categories];
-    newCategories[catIdx].items[itemIdx][key] = value;
-    const updated = { ...session, categories: newCategories };
-    setSession(updated);
-    onUpdate(updated);
+    newCategories[catIdx].items[itemIdx].label = value;
+    handleUpdate({ ...session, categories: newCategories });
+  };
+
+  const handleBenefitValueChange = (catIdx: number, itemIdx: number, providerIdx: number, value: string) => {
+    const newCategories = [...session.categories];
+    newCategories[catIdx].items[itemIdx].values[providerIdx] = value;
+    handleUpdate({ ...session, categories: newCategories });
   };
 
   const handleAddRow = (catIdx: number) => {
     const newCategories = [...session.categories];
-    newCategories[catIdx].items.push({ label: 'New Benefit', valueA: '', valueB: '' });
-    const updated = { ...session, categories: newCategories };
-    setSession(updated);
-    onUpdate(updated);
+    newCategories[catIdx].items.push({ 
+      label: 'New Benefit', 
+      values: Array(session.providers.length).fill('') 
+    });
+    handleUpdate({ ...session, categories: newCategories });
   };
 
   const handleRemoveRow = (catIdx: number, itemIdx: number) => {
     const newCategories = [...session.categories];
     newCategories[catIdx].items.splice(itemIdx, 1);
-    const updated = { ...session, categories: newCategories };
-    setSession(updated);
-    onUpdate(updated);
+    handleUpdate({ ...session, categories: newCategories });
   };
 
   const handleAddCategory = () => {
-    const newCategories = [...session.categories];
-    newCategories.push({
+    const newCategories = [...session.categories, {
       title: 'New Benefit Section',
-      items: [{ label: 'Benefit Item', valueA: '', valueB: '' }]
-    });
-    const updated = { ...session, categories: newCategories };
-    setSession(updated);
-    onUpdate(updated);
+      items: [{ label: 'Benefit Item', values: Array(session.providers.length).fill('') }]
+    }];
+    handleUpdate({ ...session, categories: newCategories });
   };
 
   const handleRemoveCategory = (catIdx: number) => {
     if (!window.confirm("Are you sure you want to delete this entire section?")) return;
     const newCategories = [...session.categories];
     newCategories.splice(catIdx, 1);
-    const updated = { ...session, categories: newCategories };
-    setSession(updated);
-    onUpdate(updated);
+    handleUpdate({ ...session, categories: newCategories });
   };
 
   const handleCategoryTitleChange = (catIdx: number, value: string) => {
     const newCategories = [...session.categories];
     newCategories[catIdx].title = value;
-    const updated = { ...session, categories: newCategories };
-    setSession(updated);
-    onUpdate(updated);
+    handleUpdate({ ...session, categories: newCategories });
   };
 
   const printReport = () => {
     setExporting(true);
-    // Short delay to ensure any state-based styles update if needed
     setTimeout(() => {
       window.print();
       setExporting(false);
     }, 100);
   };
 
+  const isMultiProvider = session.providers.length > 2;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 print:p-0 print:max-w-none print:m-0">
+    <div className={`mx-auto px-4 py-8 print:p-0 print:m-0 ${isMultiProvider ? 'max-w-none' : 'max-w-7xl'}`}>
       {/* Action Header */}
       <div className="flex justify-between items-center mb-6 print:hidden">
         <Link to="/" className="inline-flex items-center text-slate-500 hover:text-blue-600 transition-colors">
@@ -131,16 +160,24 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
         </div>
       </div>
 
-      {/* Report Notification (Web Only) */}
       {isEditing && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl flex items-center gap-3 print:hidden">
-          <Icons.Sparkles />
-          <span className="text-sm font-medium">You are currently in <strong>Admin Edit Mode</strong>. You can add/remove rows and sections below. Click "Save Changes" when done.</span>
+        <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl flex items-center justify-between print:hidden">
+          <div className="flex items-center gap-3">
+            <Icons.Sparkles />
+            <span className="text-sm font-medium">Admin Mode: Add companies, edit benefits, or restructure rows.</span>
+          </div>
+          <button 
+            onClick={handleAddProvider}
+            className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-blue-700 shadow-sm"
+          >
+            + Add Company Column
+          </button>
         </div>
       )}
 
       {/* Main Report Document */}
       <div id="report-container" className="bg-white print:shadow-none shadow-xl border border-slate-200 print:border-0 rounded-2xl print:rounded-none overflow-hidden mb-12 print:mb-0">
+        
         {/* Gold Standard Header */}
         <div className="p-8 border-b-4 border-slate-900 flex justify-between items-start print:p-6 print:pb-4 print:border-b-2">
           <div className="flex items-center gap-4">
@@ -166,19 +203,11 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
         {/* Title and Intro */}
         <div className="p-8 bg-slate-50/50 print:p-6 print:bg-white print:border-b">
           <h2 className="text-2xl font-bold text-slate-900 mb-2 border-b-2 border-slate-200 pb-2 inline-block print:text-xl">
-            {session.type} Comparison – {isEditing ? (
-              <input className="bg-white border px-2 py-0.5 rounded outline-none ring-2 ring-blue-200" value={session.providerAPlan} onChange={(e) => handleFieldChange('providerAPlan', e.target.value)} />
-            ) : session.providerAPlan} vs {isEditing ? (
-              <input className="bg-white border px-2 py-0.5 rounded outline-none ring-2 ring-blue-200" value={session.providerBPlan} onChange={(e) => handleFieldChange('providerBPlan', e.target.value)} />
-            ) : session.providerBPlan}
+            {session.type} Comparison – {session.providers.map(p => p.plan).join(' vs ')}
           </h2>
           <div className="mt-4 text-blue-700 font-medium text-sm print:text-xs">
             {session.type} Comparison for {isEditing ? (
-              <input 
-                className="bg-white border px-2 py-0.5 rounded outline-none font-bold ring-2 ring-blue-200" 
-                value={session.clientProfile.memberName}
-                onChange={(e) => handleProfileChange('memberName', e.target.value)}
-              />
+              <input className="bg-white border px-2 py-0.5 rounded outline-none font-bold ring-2 ring-blue-200" value={session.clientProfile.memberName} onChange={(e) => handleProfileChange('memberName', e.target.value)} />
             ) : session.clientProfile.memberName} ({session.clientProfile.familyComposition})
           </div>
           <p className="text-sm text-slate-500 mt-2 max-w-3xl leading-relaxed print:text-xs">
@@ -189,41 +218,21 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
           </div>
         </div>
 
-        {/* Client Profile Section */}
+        {/* Profile Card */}
         <div className="px-8 pb-8 print:px-6 print:pb-4">
           <div className="bg-white border-2 border-blue-600/20 rounded-xl p-6 grid grid-cols-2 md:grid-cols-4 gap-6 shadow-sm print:rounded-none print:border print:p-4 print:gap-4">
-            <ProfileItem 
-              label="Family Composition" 
-              value={session.clientProfile.familyComposition} 
-              isEditing={isEditing} 
-              onEdit={(v) => handleProfileChange('familyComposition', v)}
-            />
-            <ProfileItem 
-              label="Income Bracket" 
-              value={session.clientProfile.incomeBracket} 
-              isEditing={isEditing} 
-              onEdit={(v) => handleProfileChange('incomeBracket', v)}
-            />
-            <ProfileItem 
-              label="Region" 
-              value={session.clientProfile.region} 
-              isEditing={isEditing} 
-              onEdit={(v) => handleProfileChange('region', v)}
-            />
-            <ProfileItem 
-              label="Primary Priority" 
-              value={session.clientProfile.primaryPriority} 
-              isEditing={isEditing} 
-              onEdit={(v) => handleProfileChange('primaryPriority', v)}
-            />
+            <ProfileItem label="Family Composition" value={session.clientProfile.familyComposition} isEditing={isEditing} onEdit={(v) => handleProfileChange('familyComposition', v)} />
+            <ProfileItem label="Income Bracket" value={session.clientProfile.incomeBracket} isEditing={isEditing} onEdit={(v) => handleProfileChange('incomeBracket', v)} />
+            <ProfileItem label="Region" value={session.clientProfile.region} isEditing={isEditing} onEdit={(v) => handleProfileChange('region', v)} />
+            <ProfileItem label="Primary Priority" value={session.clientProfile.primaryPriority} isEditing={isEditing} onEdit={(v) => handleProfileChange('primaryPriority', v)} />
           </div>
         </div>
 
-        {/* Comparison Grid */}
-        <div className="px-8 pb-12 space-y-8 print:px-6 print:pb-8 print:space-y-4">
+        {/* THE DYNAMIC MULTI-PROVIDER GRID */}
+        <div className="px-8 pb-12 space-y-12 print:px-6 print:pb-8 print:space-y-6">
           {session.categories.map((cat, catIdx) => (
-            <div key={catIdx} className="overflow-hidden rounded-lg border border-slate-200 group/cat print:rounded-none print:border-slate-300 print:break-inside-avoid">
-              <div className="bg-blue-600 text-white px-4 py-2 flex items-center justify-between print:px-3 print:py-1">
+            <div key={catIdx} className="group/cat print:break-inside-avoid">
+              <div className="bg-blue-600 text-white px-4 py-2 flex items-center justify-between rounded-t-lg print:rounded-none print:px-3 print:py-1">
                 <div className="flex items-center gap-2">
                   <Icons.Shield />
                   {isEditing ? (
@@ -237,82 +246,82 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                   )}
                 </div>
                 {isEditing && (
-                  <button 
-                    onClick={() => handleRemoveCategory(catIdx)}
-                    className="text-[10px] font-black uppercase bg-red-500/80 px-2 py-1 rounded hover:bg-red-600 transition-colors print:hidden"
-                  >
+                  <button onClick={() => handleRemoveCategory(catIdx)} className="text-[10px] font-black uppercase bg-red-500/80 px-2 py-1 rounded hover:bg-red-600 transition-colors print:hidden">
                     Remove Section
                   </button>
                 )}
               </div>
-              <table className="w-full text-sm print:text-[11px]">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-600 border-b border-slate-200 print:bg-slate-100">
-                    <th className="p-3 text-left w-1/4 print:p-2">Benefit Benefit</th>
-                    <th className="p-3 text-center border-x border-slate-200 bg-blue-50/50 font-bold uppercase tracking-tight text-[11px] print:p-2 print:text-[9px] print:border-slate-300">
-                      {session.providerAPlan}
-                    </th>
-                    <th className="p-3 text-center font-bold uppercase tracking-tight text-[11px] print:p-2 print:text-[9px]">
-                      {session.providerBPlan}
-                    </th>
-                    {isEditing && <th className="p-3 w-10 bg-slate-200/50 print:hidden"></th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 print:divide-slate-300">
-                  {cat.items.map((item, itemIdx) => (
-                    <tr key={itemIdx} className="hover:bg-slate-50 transition-colors group/row print:break-inside-avoid">
-                      <td className="p-3 font-semibold text-slate-700 bg-slate-50/30 print:p-2 print:bg-slate-50/50">
-                        {isEditing ? (
-                          <input className="w-full bg-white border border-blue-100 px-2 py-1 rounded font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-200" value={item.label} onChange={(e) => handleBenefitChange(catIdx, itemIdx, 'label', e.target.value)} />
-                        ) : item.label}
-                      </td>
-                      <td className="p-3 text-center border-x border-slate-100 whitespace-pre-wrap leading-relaxed print:p-2 print:border-slate-200">
-                        {isEditing ? (
-                          <textarea className="w-full bg-white border border-blue-100 px-2 py-1 rounded min-h-[60px] text-xs outline-none focus:ring-2 focus:ring-blue-200" value={item.valueA} onChange={(e) => handleBenefitChange(catIdx, itemIdx, 'valueA', e.target.value)} />
-                        ) : item.valueA}
-                      </td>
-                      <td className="p-3 text-center whitespace-pre-wrap leading-relaxed print:p-2">
-                        {isEditing ? (
-                          <textarea className="w-full bg-white border border-blue-100 px-2 py-1 rounded min-h-[60px] text-xs outline-none focus:ring-2 focus:ring-blue-200" value={item.valueB} onChange={(e) => handleBenefitChange(catIdx, itemIdx, 'valueB', e.target.value)} />
-                        ) : item.valueB}
-                      </td>
-                      {isEditing && (
-                        <td className="p-2 text-center bg-slate-50 print:hidden">
-                          <button 
-                            onClick={() => handleRemoveRow(catIdx, itemIdx)}
-                            className="p-1.5 text-red-400 hover:text-red-600 transition-colors"
-                            title="Remove Row"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                          </button>
+
+              {/* Table wrapper for horizontal scroll on mobile/web if columns > 3 */}
+              <div className="overflow-x-auto border-x border-b border-slate-200 rounded-b-lg print:border-slate-300 print:rounded-none">
+                <table className="w-full text-sm print:text-[10px] table-fixed border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 border-b border-slate-200">
+                      <th className="p-3 text-left w-64 min-w-[160px] sticky left-0 bg-slate-100 z-10 border-r border-slate-200 font-bold uppercase tracking-wider text-[10px] print:p-2">Benefit</th>
+                      {session.providers.map((p, pIdx) => (
+                        <th key={pIdx} className="p-3 text-center border-r border-slate-200 last:border-r-0 bg-blue-50/50 relative group/th">
+                          <div className="flex flex-col gap-1">
+                            {isEditing ? (
+                              <>
+                                <input className="w-full text-center bg-white border border-blue-200 rounded px-1 py-0.5 font-bold text-slate-900 text-xs" value={p.underwriter} onChange={(e) => handleProviderChange(pIdx, 'underwriter', e.target.value)} />
+                                <input className="w-full text-center bg-white border border-blue-200 rounded px-1 py-0.5 text-blue-600 font-medium text-[10px]" value={p.plan} onChange={(e) => handleProviderChange(pIdx, 'plan', e.target.value)} />
+                                <button onClick={() => handleRemoveProvider(pIdx)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/th:opacity-100 transition-opacity">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <span className="font-black text-slate-900 text-xs leading-tight tracking-tight uppercase">{p.underwriter}</span>
+                                <span className="text-blue-600 font-bold text-[10px] leading-tight italic">{p.plan}</span>
+                              </>
+                            )}
+                          </div>
+                        </th>
+                      ))}
+                      {isEditing && <th className="p-3 w-10 bg-slate-200/50 print:hidden"></th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 print:divide-slate-300">
+                    {cat.items.map((item, itemIdx) => (
+                      <tr key={itemIdx} className="hover:bg-slate-50 transition-colors group/row">
+                        <td className="p-3 font-semibold text-slate-700 bg-slate-50/50 sticky left-0 z-10 border-r border-slate-200 backdrop-blur-sm print:p-2">
+                          {isEditing ? (
+                            <input className="w-full bg-white border border-blue-100 px-2 py-1 rounded font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-200" value={item.label} onChange={(e) => handleBenefitLabelChange(catIdx, itemIdx, e.target.value)} />
+                          ) : item.label}
                         </td>
-                      )}
-                    </tr>
-                  ))}
-                  {isEditing && (
-                    <tr className="print:hidden">
-                      <td colSpan={4} className="p-2 bg-slate-50 border-t border-slate-200">
-                        <button 
-                          onClick={() => handleAddRow(catIdx)}
-                          className="w-full py-2 text-blue-600 font-bold text-xs uppercase tracking-widest hover:bg-blue-100/50 rounded-lg flex items-center justify-center gap-2 border-2 border-dashed border-blue-200 transition-colors"
-                        >
-                          <Icons.Plus />
-                          Add Row to {cat.title}
-                        </button>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                        {item.values.map((val, pIdx) => (
+                          <td key={pIdx} className="p-3 text-center border-r border-slate-100 last:border-r-0 whitespace-pre-wrap leading-relaxed print:p-2">
+                            {isEditing ? (
+                              <textarea className="w-full bg-white border border-blue-100 px-2 py-1 rounded min-h-[60px] text-xs outline-none focus:ring-2 focus:ring-blue-200" value={val} onChange={(e) => handleBenefitValueChange(catIdx, itemIdx, pIdx, e.target.value)} />
+                            ) : val}
+                          </td>
+                        ))}
+                        {isEditing && (
+                          <td className="p-2 text-center bg-slate-50/50 print:hidden">
+                            <button onClick={() => handleRemoveRow(catIdx, itemIdx)} className="p-1.5 text-red-400 hover:text-red-600 transition-colors">
+                              <Icons.Trash />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {isEditing && (
+                <div className="mt-2 flex justify-start print:hidden">
+                  <button onClick={() => handleAddRow(catIdx)} className="px-4 py-2 text-blue-600 font-bold text-xs uppercase tracking-widest hover:bg-blue-50 rounded-lg flex items-center gap-2 border-2 border-dashed border-blue-100 transition-colors">
+                    <Icons.Plus /> Add Benefit Row
+                  </button>
+                </div>
+              )}
             </div>
           ))}
 
           {isEditing && (
-            <div className="flex justify-center pt-4 print:hidden">
-              <button 
-                onClick={handleAddCategory}
-                className="bg-white text-slate-800 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center gap-3 transition-all shadow-sm"
-              >
+            <div className="flex justify-center pt-8 print:hidden">
+              <button onClick={handleAddCategory} className="bg-white text-slate-800 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center gap-3 transition-all shadow-sm">
                 <div className="bg-slate-900 text-white p-1 rounded-full"><Icons.Plus /></div>
                 Add New Comparison Section
               </button>
@@ -337,8 +346,8 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
       <style>{`
         @media print {
           @page { 
-            size: A4;
-            margin: 0cm; 
+            size: ${isMultiProvider ? 'A4 landscape' : 'A4 portrait'};
+            margin: 0.5cm; 
           }
           body { 
             background-color: white !important;
@@ -346,13 +355,6 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
             print-color-adjust: exact !important;
           }
           .print\\:hidden { display: none !important; }
-          header, footer { display: none !important; }
-          main { padding: 0 !important; }
-          .max-w-7xl { 
-            max-width: 100% !important; 
-            margin: 0 !important; 
-            width: 100% !important; 
-          }
           #report-container {
             border: none !important;
             box-shadow: none !important;
@@ -361,19 +363,14 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
             padding: 0 !important;
             border-radius: 0 !important;
           }
-          /* Force standard colors in print */
+          .sticky { position: static !important; }
           .bg-blue-600 { background-color: #2563eb !important; color: white !important; }
           .bg-black { background-color: #000000 !important; color: white !important; }
           .bg-red-600 { background-color: #dc2626 !important; color: white !important; }
           .bg-slate-100 { background-color: #f1f5f9 !important; }
-          .bg-slate-50 { background-color: #f8fafc !important; }
           .bg-blue-50\\/50 { background-color: #eff6ff !important; }
-          .text-white { color: white !important; }
-          .text-blue-700 { color: #1d4ed8 !important; }
-          .text-slate-900 { color: #0f172a !important; }
-          
           tr { page-break-inside: avoid !important; }
-          .print\\:break-inside-avoid { break-inside: avoid !important; }
+          table { width: 100% !important; table-layout: fixed !important; }
         }
       `}</style>
     </div>

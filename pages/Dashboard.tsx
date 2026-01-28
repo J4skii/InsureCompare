@@ -31,7 +31,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions }) => {
             <Icons.FileText />
           </div>
           <h3 className="text-lg font-semibold text-slate-900 mb-1">No comparisons found</h3>
-          <p className="text-slate-500 mb-6">Start by creating your first side-by-side comparison session.</p>
+          <p className="text-slate-500 mb-6">Start by creating your first multi-provider comparison session.</p>
           <Link to="/create" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-all">
             <Icons.Plus />
             Create Now
@@ -51,15 +51,15 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions }) => {
                 </span>
                 <span className="text-xs text-slate-400 font-medium">{session.date}</span>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">{session.name}</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">{session.name}</h3>
               <div className="space-y-2 mb-6">
                 <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="font-semibold">Providers:</span>
-                  <span>{session.providerAUnderwriter} vs {session.providerBUnderwriter}</span>
+                  <span className="font-semibold shrink-0">Providers:</span>
+                  <span className="truncate">{session.providers.map(p => p.underwriter).join(' vs ')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="font-semibold">Family:</span>
-                  <span className="truncate">{session.clientProfile.familyComposition}</span>
+                  <span className="font-semibold">Client:</span>
+                  <span className="truncate">{session.clientProfile.memberName}</span>
                 </div>
               </div>
               <div className="flex items-center text-blue-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">

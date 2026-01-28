@@ -13,10 +13,14 @@ export interface ClientProfile {
   primaryPriority: string;
 }
 
+export interface Provider {
+  underwriter: string;
+  plan: string;
+}
+
 export interface BenefitItem {
   label: string;
-  valueA: string;
-  valueB: string;
+  values: string[]; // Supports multiple providers
 }
 
 export interface BenefitCategory {
@@ -30,9 +34,6 @@ export interface ComparisonSession {
   date: string;
   clientProfile: ClientProfile;
   type: PlanType;
-  providerAUnderwriter: string;
-  providerBUnderwriter: string;
-  providerAPlan: string;
-  providerBPlan: string;
+  providers: Provider[]; // Refactored from providerA/B
   categories: BenefitCategory[];
 }

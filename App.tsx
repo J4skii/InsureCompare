@@ -34,21 +34,26 @@ const App: React.FC = () => {
   return (
     <Router>
       <div className="min-h-screen bg-slate-50 flex flex-col print:bg-white">
-        {/* Navigation Header */}
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-50 print:hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="bg-slate-900 p-2 rounded-lg group-hover:bg-blue-600 transition-colors">
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
+        {/* Corporate Navigation Header */}
+        <header className="bg-[#1a1a1a] border-b-4 border-[#C5A059] sticky top-0 z-50 print:hidden shadow-lg">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-3 group">
+              <div className="relative w-8 h-10 flex flex-col justify-between items-center group-hover:scale-105 transition-transform">
+                 <div className="w-full h-1 bg-[#C5A059] rounded-sm"></div>
+                 <div className="flex gap-0.5 flex-1">
+                   <div className="w-1 h-full bg-[#C5A059] opacity-40"></div>
+                   <div className="w-1.5 h-full bg-[#C5A059]"></div>
+                   <div className="w-1 h-full bg-[#C5A059] opacity-40"></div>
+                 </div>
+                 <div className="w-full h-1 bg-[#C5A059] rounded-sm"></div>
+                 <div className="absolute top-0 right-[-10px] w-10 h-6 border-[6px] border-l-0 border-[#C5A059] rounded-r-full"></div>
               </div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tighter">InsureCompare<span className="text-blue-600 italic">Pro</span></h1>
+              <h1 className="text-2xl font-black text-white tracking-tighter ml-3">PRAETO<span className="text-[#C5A059] italic ml-1 font-light tracking-widest text-lg uppercase">Portal</span></h1>
             </Link>
-            <nav className="flex gap-4">
-              <Link to="/" className="text-sm font-bold text-slate-600 hover:text-blue-600 px-3 py-2 rounded-md transition-colors uppercase tracking-widest">Dashboard</Link>
-              <Link to="/create" className="bg-blue-600 text-white text-xs font-black uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-blue-700 shadow-md transition-all flex items-center gap-2">
-                New Report
+            <nav className="flex items-center gap-6">
+              <Link to="/" className="text-[11px] font-black text-white/70 hover:text-[#C5A059] transition-colors uppercase tracking-[0.2em]">Dashboard</Link>
+              <Link to="/create" className="bg-[#C5A059] text-white text-[11px] font-black uppercase tracking-[0.2em] px-6 py-3 rounded-xl hover:bg-[#b08e4d] shadow-lg transition-all flex items-center gap-2">
+                Create Comparison
               </Link>
             </nav>
           </div>
@@ -62,9 +67,16 @@ const App: React.FC = () => {
           </Routes>
         </main>
 
-        <footer className="bg-white border-t border-slate-200 py-8 print:hidden">
-          <div className="max-w-7xl mx-auto px-4 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-            &copy; {new Date().getFullYear()} InsureComparePro &bull; Powered by Gemini AI
+        <footer className="bg-white border-t border-slate-200 py-10 print:hidden">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-slate-300">
+               <div className="w-8 h-px bg-slate-200"></div>
+               <span className="text-[10px] font-black uppercase tracking-[0.5em]">Praeto Insurance Management</span>
+               <div className="w-8 h-px bg-slate-200"></div>
+            </div>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+              &copy; {new Date().getFullYear()} Praeto Financial Services &bull; FSP 1457 &bull; Licensed Financial Services Provider
+            </p>
           </div>
         </footer>
       </div>

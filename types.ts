@@ -26,6 +26,7 @@ export interface BenefitItem {
 export interface BenefitCategory {
   title: string;
   items: BenefitItem[];
+  notes?: string;
 }
 
 export interface ComparisonSession {
@@ -36,4 +37,5 @@ export interface ComparisonSession {
   type: PlanType;
   providers: Provider[]; // Refactored from providerA/B
   categories: BenefitCategory[];
+  reportTitleOverride?: string;
 }

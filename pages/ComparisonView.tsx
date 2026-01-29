@@ -22,6 +22,13 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
     setSession(sessions.find(s => s.id === id));
   }, [id, sessions]);
 
+  useEffect(() => {
+    if (showSaveToast) {
+      const timeoutId = setTimeout(() => setShowSaveToast(false), 3000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [showSaveToast]);
+
   if (!session) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -43,7 +50,7 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
   };
 
   const handleEnterEditMode = () => {
-    setDraftSession({ ...session });
+    setDraftSession(JSON.parse(JSON.stringify(session)));
     setIsEditing(true);
   };
 
@@ -52,7 +59,6 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
       setSession(draftSession);
       onUpdate(draftSession);
       setShowSaveToast(true);
-      setTimeout(() => setShowSaveToast(false), 3000);
     }
     setIsEditing(false);
     setDraftSession(undefined);
@@ -175,17 +181,6 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
       window.print();
       setExporting(false);
     }, 100);
-  };
-
-  const hasValidationErrors = () => {
-    if (!isEditing) return false;
-    // Check provider names/plans
-    const hasEmptyProvider = currentSession.providers.some(p => !p.underwriter?.trim() || !p.plan?.trim());
-    // Check benefit labels
-    const hasEmptyLabel = currentSession.categories.some(cat => 
-      cat.items.some(item => !item.label?.trim())
-    );
-    return hasEmptyProvider || hasEmptyLabel;
   };
 
   const isMultiProvider = currentSession.providers.length > 2;

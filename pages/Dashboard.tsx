@@ -6,9 +6,10 @@ import { Icons } from '../constants';
 
 interface DashboardProps {
   sessions: ComparisonSession[];
+  onDelete: (sessionId: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ sessions }) => {
+const Dashboard: React.FC<DashboardProps> = ({ sessions, onDelete }) => {
   const getBadgeColor = (type: PlanType) => {
     switch (type) {
       case PlanType.MEDICAL_AID: return 'bg-blue-100 text-blue-700 border-blue-200';
@@ -40,35 +41,42 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions }) => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sessions.map((session) => (
-            <Link 
-              key={session.id} 
-              to={`/view/${session.id}`}
-              className="group bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md hover:border-blue-300 transition-all"
+            <div
+              key={session.id}
+              className="group bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md hover:border-blue-300 transition-all flex flex-col"
             >
-              <div className="flex justify-between items-start mb-4">
-                <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded border ${getBadgeColor(session.type)}`}>
-                  {session.type}
-                </span>
-                <span className="text-xs text-slate-400 font-medium">{session.date}</span>
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">{session.name}</h3>
-              <div className="space-y-2 mb-6">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="font-semibold shrink-0">Providers:</span>
-                  <span className="truncate">{session.providers.map(p => p.underwriter).join(' vs ')}</span>
+              <Link to={`/view/${session.id}`} className="flex-1">
+                <div className="flex justify-between items-start mb-4">
+                  <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded border ${getBadgeColor(session.type)}`}>
+                    {session.type}
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">{session.date}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="font-semibold">Client:</span>
-                  <span className="truncate">{session.clientProfile.memberName}</span>
+                <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">{session.name}</h3>
+                <div className="space-y-2 mb-6">
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <span className="font-semibold shrink-0">Providers:</span>
+                    <span className="truncate">{session.providers.map(p => p.underwriter).join(' vs ')}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <span className="font-semibold">Client:</span>
+                    <span className="truncate">{session.clientProfile.memberName}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center text-blue-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                View Detailed Comparison
-                <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </Link>
+                <div className="flex items-center text-blue-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                  View Detailed Comparison
+                  <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </Link>
+              <button
+                onClick={() => onDelete(session.id)}
+                className="mt-4 text-xs font-bold uppercase text-red-500 hover:text-red-600 self-start"
+              >
+                Delete Comparison
+              </button>
+            </div>
           ))}
         </div>
       )}

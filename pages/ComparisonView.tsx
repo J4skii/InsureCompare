@@ -6,7 +6,7 @@ import { Icons } from '../constants';
 
 interface ComparisonViewProps {
   sessions: ComparisonSession[];
-  onUpdate: (session: ComparisonSession) => void;
+  onUpdate: (session: ComparisonSession) => Promise<void>;
 }
 
 const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) => {
@@ -45,7 +45,9 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
       setDraftSession(updated);
     } else {
       setSession(updated);
-      onUpdate(updated);
+      onUpdate(updated).catch((error) => {
+        console.error('Failed to update comparison', error);
+      });
     }
   };
 
@@ -54,11 +56,16 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
     setIsEditing(true);
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (draftSession) {
       setSession(draftSession);
-      onUpdate(draftSession);
-      setShowSaveToast(true);
+      try {
+        await onUpdate(draftSession);
+        setShowSaveToast(true);
+      } catch (error) {
+        console.error('Failed to save changes', error);
+        alert('Unable to save changes right now.');
+      }
     }
     setIsEditing(false);
     setDraftSession(undefined);

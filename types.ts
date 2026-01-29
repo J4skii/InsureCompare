@@ -39,3 +39,23 @@ export interface ComparisonSession {
   categories: BenefitCategory[];
   reportTitleOverride?: string;
 }
+
+export type AdminRole = 'admin' | 'super_admin';
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: AdminRole;
+  createdAt: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  meta: Record<string, unknown> | null;
+  createdAt: string;
+  actorEmail?: string;
+  actorRole?: AdminRole;
+}

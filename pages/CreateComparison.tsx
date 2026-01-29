@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GoogleGenAI, Type } from "@google/genai";
 import { ComparisonSession, PlanType, ClientProfile, Provider } from '../types';
 import { Icons } from '../constants';
+import { parseComparisonWithAi } from '../services/supabaseService';
 
 interface CreateComparisonProps {
-  onSave: (session: ComparisonSession) => void;
+  onSave: (session: ComparisonSession) => Promise<void>;
 }
 
 const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
@@ -67,74 +67,11 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
     setIsAiLoading(true);
     
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `
-        Analyze the following insurance comparison text (which might be from an Excel or PDF OCR).
-        The text may compare TWO or MORE providers.
-        Extract it into a structured JSON format matching this schema:
-        - memberName: string
-        - familyComposition: string
-        - providers: Array of { underwriter: string, plan: string }
-        - categories: Array of { title: string, items: Array of { label: string, values: Array of string (same length as providers) } }
-        
-        Important: Ensure the 'values' array in each item matches the order and length of the 'providers' array.
-        
-        Text to process:
-        ${rawText}
-      `;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              memberName: { type: Type.STRING },
-              familyComposition: { type: Type.STRING },
-              providers: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    underwriter: { type: Type.STRING },
-                    plan: { type: Type.STRING }
-                  },
-                  required: ["underwriter", "plan"]
-                }
-              },
-              categories: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    items: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          label: { type: Type.STRING },
-                          values: { type: Type.ARRAY, items: { type: Type.STRING } }
-                        },
-                        required: ["label", "values"]
-                      }
-                    }
-                  },
-                  required: ["title", "items"]
-                }
-              }
-            }
-          }
-        }
-      });
-
-      const data = JSON.parse(response.text);
-      setProfile(prev => ({ ...prev, memberName: data.memberName, familyComposition: data.familyComposition }));
-      setProviders(data.providers);
-      setCategories(data.categories);
-      setStep(3); 
+      const data = await parseComparisonWithAi(rawText);
+      setProfile(prev => ({ ...prev, memberName: data.memberName ?? '', familyComposition: data.familyComposition ?? '' }));
+      setProviders(data.providers ?? []);
+      setCategories(data.categories ?? []);
+      setStep(3);
     } catch (err) {
       console.error("AI Import Error:", err);
       alert("AI was unable to parse that text accurately. Please try a clearer text selection.");
@@ -143,9 +80,9 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newSession: ComparisonSession = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       name: name || providers.map(p => p.underwriter).join(' vs '),
       date: new Date().toISOString().split('T')[0],
       type,
@@ -153,8 +90,13 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
       providers,
       categories
     };
-    onSave(newSession);
-    navigate(`/view/${newSession.id}`);
+    try {
+      await onSave(newSession);
+      navigate(`/view/${newSession.id}`);
+    } catch (error) {
+      console.error('Failed to save comparison', error);
+      alert('Unable to save comparison right now.');
+    }
   };
 
   return (

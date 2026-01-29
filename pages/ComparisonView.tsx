@@ -35,9 +35,9 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
   };
 
   const handleProfileChange = (key: string, value: string) => {
-    handleUpdate({ 
-      ...session, 
-      clientProfile: { ...session.clientProfile, [key]: value } 
+    handleUpdate({
+      ...session,
+      clientProfile: { ...session.clientProfile, [key]: value }
     });
   };
 
@@ -88,9 +88,9 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
 
   const handleAddRow = (catIdx: number) => {
     const newCategories = [...session.categories];
-    newCategories[catIdx].items.push({ 
-      label: 'New Benefit', 
-      values: Array(session.providers.length).fill('') 
+    newCategories[catIdx].items.push({
+      label: 'New Benefit',
+      values: Array(session.providers.length).fill('')
     });
     handleUpdate({ ...session, categories: newCategories });
   };
@@ -141,14 +141,14 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
           <span className="ml-2 font-medium">Back to Dashboard</span>
         </Link>
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={() => setIsEditing(!isEditing)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${isEditing ? 'bg-green-600 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
           >
             <Icons.Edit />
             {isEditing ? 'Save Changes' : 'Admin Edit Mode'}
           </button>
-          <button 
+          <button
             onClick={printReport}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm transition-all ${exporting ? 'bg-slate-400 cursor-wait' : 'bg-[#C5A059] text-white hover:bg-[#b08e4d]'}`}
           >
@@ -164,7 +164,7 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
             <Icons.Sparkles />
             <span className="text-sm font-medium">Admin Mode: Add companies, edit benefits, or restructure rows.</span>
           </div>
-          <button 
+          <button
             onClick={handleAddProvider}
             className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-blue-700 shadow-sm"
           >
@@ -175,83 +175,16 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
 
       {/* Main Report Document */}
       <div id="report-container" className="bg-[#111] print:bg-white print:shadow-none shadow-2xl border border-slate-200 print:border-0 rounded-2xl print:rounded-none overflow-hidden mb-12 print:mb-0 relative">
-        
+
         {/* GOLD STANDARD PRAETO BRANDING BLOCK - EXACT RECREATION */}
-        <div className="relative z-10 p-12 text-center bg-[#111] text-[#C5A059] flex flex-col items-center print:bg-[#111] print:text-[#C5A059] print:p-8">
-          
-          {/* Main Logo Container */}
-          <div className="flex items-center justify-center gap-0 mb-2">
-            {/* The Stylized Column P */}
-            <div className="relative w-20 h-28 flex flex-col justify-between items-center print:w-16 print:h-24">
-               {/* Column Capital */}
-               <div className="w-full h-2.5 bg-[#C5A059] rounded-sm mb-1.5"></div>
-               {/* Column Shaft */}
-               <div className="flex gap-1.5 flex-1 w-full justify-center">
-                 <div className="w-2.5 h-full bg-[#C5A059] opacity-30"></div>
-                 <div className="w-4 h-full bg-[#C5A059]"></div>
-                 <div className="w-2.5 h-full bg-[#C5A059] opacity-30"></div>
-               </div>
-               {/* Column Base */}
-               <div className="w-full h-3 bg-[#C5A059] rounded-sm mt-1.5"></div>
-               {/* The P arc - accurately positioned */}
-               <div className="absolute top-0 left-[60%] w-[120%] h-[60%] border-[14px] border-l-0 border-[#C5A059] rounded-r-full print:border-[10px]"></div>
-            </div>
-            
-            {/* The "RAETO" Text with Inline Style */}
-            <div className="relative ml-8 flex items-baseline">
-              <h1 className="text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-[#C5A059] relative print:text-6xl">
-                RAETO
-                {/* Replicating the inline horizontal line detail seen in image */}
-                <div className="absolute inset-0 flex flex-col justify-center pointer-events-none px-1">
-                  <div className="w-full h-px bg-[#111] opacity-40 mb-2"></div>
-                  <div className="w-full h-px bg-[#111] opacity-40"></div>
-                </div>
-              </h1>
-            </div>
-          </div>
-
-          {/* Slogan */}
-          <h3 className="text-lg font-black uppercase tracking-[0.25em] mb-4 text-white print:text-sm">
-            Risk and Insurance Management Solutions
-          </h3>
-          
-          {/* Divider with Date */}
-          <div className="flex items-center w-full max-w-2xl gap-4 mb-6">
-            <div className="flex-1 h-[3px] bg-[#C5A059]"></div>
-            <span className="text-xs font-black uppercase tracking-widest text-[#C5A059] whitespace-nowrap">Est. 1998</span>
-            <div className="flex-1 h-[3px] bg-[#C5A059]"></div>
-          </div>
-
-          {/* Icon Row - stylized gold icons based on image */}
-          <div className="flex items-center justify-center gap-8 mb-8 opacity-90 print:gap-6 print:mb-6">
-            <Icons.ChartGold />
-            <Icons.FinanceGold />
-            <Icons.AgricultureGold />
-            <Icons.HomeGold />
-            <Icons.FamilyGold />
-            <Icons.HealthGold />
-          </div>
-
-          {/* Compliance Pill Container */}
-          <div className="bg-white rounded-full px-10 py-3 flex items-center gap-10 shadow-xl border border-[#C5A059]/30 print:px-8 print:py-2 print:gap-8">
-            <div className="flex items-center gap-4">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Proud Member Of</span>
-              <div className="flex items-center gap-2">
-                 {/* FIA stylized text logo */}
-                 <span className="text-2xl font-black text-black italic leading-none lowercase tracking-tighter">fia</span>
-                 <div className="w-[1px] h-8 bg-slate-200"></div>
-                 <div className="flex flex-col text-[7px] text-slate-500 font-bold uppercase leading-[1.1] text-left">
-                   <span>Financial</span>
-                   <span>Intermediaries</span>
-                   <span>Association</span>
-                   <span>Of Southern Africa</span>
-                 </div>
-              </div>
-            </div>
-            <div className="w-[1px] h-10 bg-slate-200"></div>
-            <div className="flex flex-col items-center justify-center">
-               <span className="text-lg font-black text-black tracking-tighter leading-none">FSP 1457</span>
-            </div>
+        {/* GOLD STANDARD PRAETO BRANDING BLOCK - RIBBON STYLE */}
+        <div className="relative z-10 py-6 text-center bg-[#111] border-b-4 border-[#C5A059] flex flex-col items-center justify-center print:py-4 print:bg-[#111] print:border-b-2 print:text-[#C5A059]">
+          <div className="w-full flex justify-center">
+            <img
+              src="/praeto-logo-v3.png"
+              alt="Praeto Header Banner"
+              className="h-24 w-auto object-contain print:h-16"
+            />
           </div>
         </div>
 
@@ -295,9 +228,9 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-8 bg-[#C5A059]"></div>
                     {isEditing ? (
-                      <input 
-                        className="bg-slate-800/80 text-white font-black uppercase tracking-[0.2em] text-sm px-3 py-1.5 rounded border border-white/20 outline-none w-80" 
-                        value={cat.title} 
+                      <input
+                        className="bg-slate-800/80 text-white font-black uppercase tracking-[0.2em] text-sm px-3 py-1.5 rounded border border-white/20 outline-none w-80"
+                        value={cat.title}
                         onChange={(e) => handleCategoryTitleChange(catIdx, e.target.value)}
                       />
                     ) : (
@@ -390,16 +323,15 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
           {/* Detailed Legal Disclaimer / Corporate Footer */}
           <div className="bg-[#111] text-white p-16 print:p-8 text-center border-t-8 border-[#C5A059] print:bg-black print:text-white">
             <div className="flex items-center justify-center gap-6 mb-10">
-               <div className="flex-1 h-px bg-[#C5A059]/40"></div>
-               <div className="flex items-center gap-3">
-                 <div className="w-8 h-10 bg-[#C5A059]/10 border-2 border-[#C5A059] flex items-center justify-center text-lg font-black text-[#C5A059]">P</div>
-                 <span className="font-black uppercase tracking-[0.6em] text-[#C5A059] text-lg">PRAETO</span>
-               </div>
-               <div className="flex-1 h-px bg-[#C5A059]/40"></div>
+              <div className="flex-1 h-px bg-[#C5A059]/40"></div>
+              <div className="flex items-center gap-3">
+                <img src="/praeto-logo-v3.png" alt="Praeto Footer Logo" className="h-12 w-auto opacity-80 grayscale hover:grayscale-0 transition-all" />
+              </div>
+              <div className="flex-1 h-px bg-[#C5A059]/40"></div>
             </div>
-            
+
             <p className="font-black text-[#C5A059] mb-8 uppercase tracking-[0.4em] text-xs">Professional Risk Analysis & Management Solutions</p>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-[10px] text-slate-400 opacity-80 mb-12 print:opacity-100 print:gap-4 print:text-[8px]">
               <div className="flex flex-col gap-2">
                 <span className="font-black text-white uppercase text-[11px] mb-1">Corporate Office</span>
@@ -417,10 +349,10 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                 <span>Email: clients@praeto.co.za</span>
               </div>
             </div>
-            
+
             <div className="pt-10 border-t border-white/10 flex flex-col items-center gap-4">
               <p className="font-mono text-[9px] text-slate-500 uppercase tracking-widest print:text-[7px]">
-                 CMS ORG3620 &bull; Licensed Financial Services Provider FSB 1457 &bull; Proud FIA Member
+                CMS ORG3620 &bull; Licensed Financial Services Provider FSB 1457 &bull; Proud FIA Member
               </p>
               <div className="bg-slate-900 px-6 py-2 rounded-full text-[9px] font-bold text-[#C5A059] print:bg-transparent">
                 PREPARED BY PRAETO FINANCIAL SERVICES - CONFIDENTIAL

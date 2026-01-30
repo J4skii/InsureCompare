@@ -289,17 +289,66 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                 <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight print:text-xl">
                   {currentSession.reportTitleOverride || `${currentSession.type} Comparison Report`}
                 </h2>
-                <div className="mt-3 inline-flex items-center gap-3 bg-slate-100 px-4 py-2 rounded-lg">
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Client Name</span>
-                  {isEditing ? (
-                    <input
-                      className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors"
-                      value={currentSession.clientProfile.memberName}
-                      onChange={(e) => handleProfileChange('memberName', e.target.value)}
-                    />
-                  ) : (
-                    <span className="text-sm font-black text-[#C5A059] uppercase">{currentSession.clientProfile.memberName}</span>
-                  )}
+                <div className="mt-4 flex flex-wrap gap-6">
+                  {/* Name */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Name</span>
+                    {isEditing ? (
+                      <input
+                        className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-40"
+                        value={currentSession.clientProfile.memberName}
+                        onChange={(e) => handleProfileChange('memberName', e.target.value)}
+                        placeholder="Name"
+                      />
+                    ) : (
+                      <span className="text-sm font-black text-[#C5A059] uppercase">{currentSession.clientProfile.memberName}</span>
+                    )}
+                  </div>
+
+                  {/* Surname */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Surname</span>
+                    {isEditing ? (
+                      <input
+                        className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-40"
+                        value={currentSession.clientProfile.surname || ''}
+                        onChange={(e) => handleProfileChange('surname', e.target.value)}
+                        placeholder="Surname"
+                      />
+                    ) : (
+                      <span className="text-sm font-black text-[#C5A059] uppercase">{currentSession.clientProfile.surname || '---'}</span>
+                    )}
+                  </div>
+
+                  {/* ID Number */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID No.</span>
+                    {isEditing ? (
+                      <input
+                        className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-40"
+                        value={currentSession.clientProfile.idNumber || ''}
+                        onChange={(e) => handleProfileChange('idNumber', e.target.value)}
+                        placeholder="ID Number"
+                      />
+                    ) : (
+                      <span className="text-sm font-black text-[#C5A059] uppercase">{currentSession.clientProfile.idNumber || '---'}</span>
+                    )}
+                  </div>
+
+                  {/* Age */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Age</span>
+                    {isEditing ? (
+                      <input
+                        className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-20"
+                        value={currentSession.clientProfile.age || ''}
+                        onChange={(e) => handleProfileChange('age', e.target.value)}
+                        placeholder="Age"
+                      />
+                    ) : (
+                      <span className="text-sm font-black text-[#C5A059] uppercase">{currentSession.clientProfile.age || '---'}</span>
+                    )}
+                  </div>
                 </div>
                 {isEditing && (
                   <div className="mt-4">
@@ -334,8 +383,9 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
 
           {/* Profile Context Grid */}
           <div className="px-10 pb-10 print:px-6 print:pb-6">
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 grid grid-cols-2 md:grid-cols-4 gap-8 shadow-sm print:rounded-none print:border print:p-4 print:gap-4 print:bg-white">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 grid grid-cols-2 md:grid-cols-5 gap-8 shadow-sm print:rounded-none print:border print:p-4 print:gap-4 print:bg-white">
               <ProfileItem label="Family Composition" value={currentSession.clientProfile.familyComposition} isEditing={isEditing} onEdit={(v) => handleProfileChange('familyComposition', v)} />
+              <ProfileItem label="Occupation" value={currentSession.clientProfile.occupation} isEditing={isEditing} onEdit={(v) => handleProfileChange('occupation', v)} />
               <ProfileItem label="Income Bracket" value={currentSession.clientProfile.incomeBracket} isEditing={isEditing} onEdit={(v) => handleProfileChange('incomeBracket', v)} />
               <ProfileItem label="Region" value={currentSession.clientProfile.region} isEditing={isEditing} onEdit={(v) => handleProfileChange('region', v)} />
               <ProfileItem label="Primary Priority" value={currentSession.clientProfile.primaryPriority} isEditing={isEditing} onEdit={(v) => handleProfileChange('primaryPriority', v)} />
@@ -396,16 +446,16 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                             <div className="flex flex-col gap-1.5">
                               {isEditing ? (
                                 <>
-                                  <input 
+                                  <input
                                     className={`w-full text-center bg-slate-50 border-2 rounded px-2 py-1.5 font-black text-slate-900 text-[11px] uppercase tracking-tighter ${!p.underwriter?.trim() ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
-                                    value={p.underwriter} 
-                                    onChange={(e) => handleProviderChange(pIdx, 'underwriter', e.target.value)} 
+                                    value={p.underwriter}
+                                    onChange={(e) => handleProviderChange(pIdx, 'underwriter', e.target.value)}
                                     placeholder="Provider name required"
                                   />
-                                  <input 
+                                  <input
                                     className={`w-full text-center bg-slate-50 border-2 rounded px-2 py-1.5 text-[#C5A059] font-black text-[10px] uppercase tracking-widest ${!p.plan?.trim() ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
-                                    value={p.plan} 
-                                    onChange={(e) => handleProviderChange(pIdx, 'plan', e.target.value)} 
+                                    value={p.plan}
+                                    onChange={(e) => handleProviderChange(pIdx, 'plan', e.target.value)}
                                     placeholder="Plan name required"
                                   />
                                   <button onClick={() => handleRemoveProvider(pIdx)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover/th:opacity-100 transition-opacity">
@@ -429,10 +479,10 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                         <tr key={itemIdx} className="hover:bg-slate-50/50 transition-colors group/row">
                           <td className="p-5 font-black text-slate-800 bg-slate-50 sticky left-0 z-10 border-r border-slate-200 backdrop-blur-sm print:p-2 print:text-[9px]">
                             {isEditing ? (
-                              <input 
+                              <input
                                 className={`w-full bg-white border-2 px-3 py-2 rounded font-bold text-slate-800 outline-none ${!item.label?.trim() ? 'border-red-500 bg-red-50' : 'border-slate-200 focus:border-[#C5A059]'}`}
-                                value={item.label} 
-                                onChange={(e) => handleBenefitLabelChange(catIdx, itemIdx, e.target.value)} 
+                                value={item.label}
+                                onChange={(e) => handleBenefitLabelChange(catIdx, itemIdx, e.target.value)}
                                 placeholder="Benefit label required"
                               />
                             ) : item.label}
@@ -440,10 +490,10 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                           {item.values.map((val, pIdx) => (
                             <td key={pIdx} className="p-5 text-center border-r border-slate-100 last:border-r-0 whitespace-pre-wrap leading-relaxed print:p-2 print:text-[9px]">
                               {isEditing ? (
-                                <textarea 
+                                <textarea
                                   className={`w-full bg-white border-2 px-3 py-2 rounded min-h-[100px] text-xs outline-none ${!val?.trim() ? 'border-amber-400 bg-amber-50' : 'border-slate-200 focus:border-[#C5A059]'}`}
-                                  value={val} 
-                                  onChange={(e) => handleBenefitValueChange(catIdx, itemIdx, pIdx, e.target.value)} 
+                                  value={val}
+                                  onChange={(e) => handleBenefitValueChange(catIdx, itemIdx, pIdx, e.target.value)}
                                   placeholder="Value recommended"
                                 />
                               ) : val || <span className="text-slate-300 italic">No Benefit Specified</span>}

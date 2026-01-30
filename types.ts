@@ -7,6 +7,10 @@ export enum PlanType {
 
 export interface ClientProfile {
   memberName: string;
+  surname: string;
+  idNumber: string;
+  age: string;
+  occupation: string;
   familyComposition: string;
   incomeBracket: string;
   region: string;

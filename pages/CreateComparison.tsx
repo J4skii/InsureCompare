@@ -14,12 +14,16 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
   const [step, setStep] = useState(1);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [rawText, setRawText] = useState('');
-  
+
   const [type, setType] = useState<PlanType>(PlanType.MEDICAL_AID);
   const [name, setName] = useState('');
-  
+
   const [profile, setProfile] = useState<ClientProfile>({
     memberName: '',
+    surname: '',
+    idNumber: '',
+    age: '',
+    occupation: '',
     familyComposition: '',
     incomeBracket: '',
     region: '',
@@ -65,12 +69,96 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
   const handleAiSmartImport = async () => {
     if (!rawText.trim()) return;
     setIsAiLoading(true);
-    
+
     try {
       const data = await parseComparisonWithAi(rawText);
       setProfile(prev => ({ ...prev, memberName: data.memberName ?? '', familyComposition: data.familyComposition ?? '' }));
       setProviders(data.providers ?? []);
       setCategories(data.categories ?? []);
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `
+        Analyze the following insurance comparison text (which might be from an Excel or PDF OCR).
+        The text may compare TWO or MORE providers.
+        Extract it into a structured JSON format matching this schema:
+        Extract it into a structured JSON format matching this schema:
+        - memberName: string
+        - surname: string
+        - idNumber: string
+        - age: string
+        - occupation: string
+        - familyComposition: string
+        - providers: Array of { underwriter: string, plan: string }
+        - categories: Array of { title: string, items: Array of { label: string, values: Array of string (same length as providers) } }
+        
+        Important: Ensure the 'values' array in each item matches the order and length of the 'providers' array.
+        
+        Text to process:
+        ${rawText}
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-pro-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              memberName: { type: Type.STRING },
+              surname: { type: Type.STRING },
+              idNumber: { type: Type.STRING },
+              age: { type: Type.STRING },
+              occupation: { type: Type.STRING },
+              familyComposition: { type: Type.STRING },
+              providers: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    underwriter: { type: Type.STRING },
+                    plan: { type: Type.STRING }
+                  },
+                  required: ["underwriter", "plan"]
+                }
+              },
+              categories: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    items: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          label: { type: Type.STRING },
+                          values: { type: Type.ARRAY, items: { type: Type.STRING } }
+                        },
+                        required: ["label", "values"]
+                      }
+                    }
+                  },
+                  required: ["title", "items"]
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const data = JSON.parse(response.text);
+      setProfile(prev => ({
+        ...prev,
+        memberName: data.memberName,
+        surname: data.surname,
+        idNumber: data.idNumber,
+        age: data.age,
+        occupation: data.occupation,
+        familyComposition: data.familyComposition
+      }));
+      setProviders(data.providers);
+      setCategories(data.categories);
       setStep(3);
     } catch (err) {
       console.error("AI Import Error:", err);
@@ -124,14 +212,14 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
                 <span className="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded uppercase">Smart v2</span>
               </div>
               <p className="text-sm text-slate-500 mb-4">Paste text from multiple brochures or a comparison sheet. AI will detect how many companies are present and build the columns for you.</p>
-              <textarea 
+              <textarea
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
                 placeholder="Paste multi-column benefit data here..."
                 className="w-full h-48 p-4 rounded-xl border-2 border-slate-200 focus:border-blue-500 outline-none font-mono text-sm leading-relaxed"
               />
               <div className="flex gap-4">
-                <button 
+                <button
                   onClick={handleAiSmartImport}
                   disabled={!rawText.trim() || isAiLoading}
                   className="flex-1 bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
@@ -150,16 +238,22 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
                 <FormInput label="Internal Report Name" value={name} onChange={setName} placeholder="e.g. 2025 Multi-Choice Analysis" />
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Comparison Type</label>
-                  <select 
-                    value={type} 
+                  <select
+                    value={type}
                     onChange={(e) => setType(e.target.value as PlanType)}
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition-all text-sm font-medium"
                   >
                     {Object.values(PlanType).map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
-                <FormInput label="Member Name" value={profile.memberName} onChange={(v) => setProfile({...profile, memberName: v})} placeholder="e.g. Ernie" />
-                <FormInput label="Family Composition" value={profile.familyComposition} onChange={(v) => setProfile({...profile, familyComposition: v})} placeholder="e.g. Main + 2" />
+                <FormInput label="Member Name" value={profile.memberName} onChange={(v) => setProfile({ ...profile, memberName: v })} placeholder="e.g. Ernie" />
+                <FormInput label="Surname" value={profile.surname} onChange={(v) => setProfile({ ...profile, surname: v })} placeholder="e.g. Els" />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormInput label="ID Number" value={profile.idNumber} onChange={(v) => setProfile({ ...profile, idNumber: v })} placeholder="ID No." />
+                  <FormInput label="Age" value={profile.age} onChange={(v) => setProfile({ ...profile, age: v })} placeholder="Age" />
+                </div>
+                <FormInput label="Occupation" value={profile.occupation} onChange={(v) => setProfile({ ...profile, occupation: v })} placeholder="e.g. Accountant" />
+                <FormInput label="Family Composition" value={profile.familyComposition} onChange={(v) => setProfile({ ...profile, familyComposition: v })} placeholder="e.g. Main + 2" />
               </div>
               <div className="flex gap-4 mt-8">
                 <button onClick={() => setStep(1)} className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-xl font-bold hover:bg-slate-200">Back</button>
@@ -226,8 +320,8 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
                           <div className={`grid gap-4 ${providers.length > 2 ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'}`}>
                             {item.values.map((val: string, pIdx: number) => (
                               <div key={pIdx}>
-                                <label className="block text-[9px] font-black text-slate-400 uppercase mb-1 truncate">{providers[pIdx].underwriter || `Provider ${pIdx+1}`} Value</label>
-                                <textarea 
+                                <label className="block text-[9px] font-black text-slate-400 uppercase mb-1 truncate">{providers[pIdx].underwriter || `Provider ${pIdx + 1}`} Value</label>
+                                <textarea
                                   className="w-full px-3 py-2 text-xs border border-slate-100 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none min-h-[50px]"
                                   value={val}
                                   onChange={(e) => {
@@ -263,10 +357,10 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
 const FormInput: React.FC<{ label: string; value: string; onChange: (v: string) => void; placeholder?: string }> = ({ label, value, onChange, placeholder }) => (
   <div className="w-full">
     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">{label}</label>
-    <input 
-      type="text" 
-      value={value} 
-      onChange={(e) => onChange(e.target.value)} 
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all text-sm font-medium"
     />

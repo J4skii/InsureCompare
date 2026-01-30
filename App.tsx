@@ -1,63 +1,171 @@
 
-import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { HashRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import ComparisonView from './pages/ComparisonView';
 import CreateComparison from './pages/CreateComparison';
+import Login from './pages/Login';
+import AdminManagement from './pages/AdminManagement';
+import AuditLog from './pages/AuditLog';
+import ProtectedRoute from './components/ProtectedRoute';
 import { ComparisonSession } from './types';
-import { INITIAL_COMPARISONS } from './constants';
+import {
+  createComparisonSession,
+  deleteComparisonSession,
+  fetchComparisonSessions,
+  signOut,
+  updateComparisonSession
+} from './services/supabaseService';
+import { useAuth } from './hooks/useAuth';
 
 const App: React.FC = () => {
+  const { admin, loading } = useAuth();
   const [sessions, setSessions] = useState<ComparisonSession[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const envConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 
   useEffect(() => {
-    const saved = localStorage.getItem('insurance_comparisons_v2');
-    if (saved) {
-      setSessions(JSON.parse(saved));
-    } else {
-      setSessions(INITIAL_COMPARISONS);
+    if (!envConfigured) {
+      setDataLoading(false);
+      setDataError('Set Supabase environment variables to load comparisons.');
+      return;
     }
-  }, []);
+    if (!admin) {
+      setSessions([]);
+      setDataLoading(false);
+      return;
+    }
+    setDataLoading(true);
+    fetchComparisonSessions()
+      .then((data) => {
+        setSessions(data);
+        setDataError(null);
+      })
+      .catch((error) => {
+        console.error('Failed to load sessions', error);
+        setDataError('Unable to load comparisons.');
+      })
+      .finally(() => setDataLoading(false));
+  }, [admin, envConfigured]);
 
-  const addSession = (session: ComparisonSession) => {
-    const updated = [session, ...sessions];
-    setSessions(updated);
-    localStorage.setItem('insurance_comparisons_v2', JSON.stringify(updated));
+  const addSession = async (session: ComparisonSession) => {
+    const saved = await createComparisonSession(session);
+    setSessions(prev => [saved, ...prev]);
   };
 
-  const updateSession = (session: ComparisonSession) => {
-    const updated = sessions.map(s => s.id === session.id ? session : s);
-    setSessions(updated);
-    localStorage.setItem('insurance_comparisons_v2', JSON.stringify(updated));
+  const updateSession = async (session: ComparisonSession) => {
+    const saved = await updateComparisonSession(session);
+    setSessions(prev => prev.map(s => s.id === saved.id ? saved : s));
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!window.confirm('Delete this comparison?')) return;
+    try {
+      await deleteComparisonSession(sessionId);
+      setSessions(prev => prev.filter(session => session.id !== sessionId));
+    } catch (error) {
+      console.error('Failed to delete comparison', error);
+      alert('Unable to delete comparison right now.');
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Failed to sign out', error);
+      alert('Unable to sign out right now.');
+    }
   };
 
   return (
     <Router>
       <div className="min-h-screen bg-slate-50 flex flex-col print:bg-white">
         {/* Corporate Navigation Header */}
-        <header className="bg-[#1a1a1a] border-b-4 border-[#C5A059] sticky top-0 z-50 print:hidden shadow-lg">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3 group">
-              <img
-                src="/praeto-logo-v3.png"
-                alt="Praeto Portal"
-                className="h-14 w-auto object-contain"
-              />
-            </Link>
-            <nav className="flex items-center gap-6">
-              <Link to="/" className="text-[11px] font-black text-white/70 hover:text-[#C5A059] transition-colors uppercase tracking-[0.2em]">Dashboard</Link>
-              <Link to="/create" className="bg-[#C5A059] text-white text-[11px] font-black uppercase tracking-[0.2em] px-6 py-3 rounded-xl hover:bg-[#b08e4d] shadow-lg transition-all flex items-center gap-2">
-                Create Comparison
+        {admin && (
+          <header className="bg-[#1a1a1a] border-b-4 border-[#C5A059] sticky top-0 z-50 print:hidden shadow-lg">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+              <Link to="/" className="flex items-center gap-3 group">
+                <img
+                  src="/praeto-logo-v3.png"
+                  alt="Praeto Portal"
+                  className="h-14 w-auto object-contain"
+                />
               </Link>
-            </nav>
-          </div>
-        </header>
+              <nav className="flex items-center gap-6">
+                <Link to="/" className="text-[11px] font-black text-white/70 hover:text-[#C5A059] transition-colors uppercase tracking-[0.2em]">Dashboard</Link>
+                <Link to="/create" className="bg-[#C5A059] text-white text-[11px] font-black uppercase tracking-[0.2em] px-6 py-3 rounded-xl hover:bg-[#b08e4d] shadow-lg transition-all flex items-center gap-2">
+                  Create Comparison
+                </Link>
+                <Link to="/admins" className="text-[11px] font-black text-white/70 hover:text-[#C5A059] transition-colors uppercase tracking-[0.2em]">Admins</Link>
+                <Link to="/audit" className="text-[11px] font-black text-white/70 hover:text-[#C5A059] transition-colors uppercase tracking-[0.2em]">Audit Trail</Link>
+                <button
+                  onClick={handleSignOut}
+                  className="text-[11px] font-black text-white/70 hover:text-[#C5A059] transition-colors uppercase tracking-[0.2em]"
+                >
+                  Sign Out
+                </button>
+              </nav>
+            </div>
+          </header>
+        )}
 
         <main className="flex-1">
+          {admin && dataLoading && (
+            <div className="max-w-5xl mx-auto px-4 py-12 text-sm text-slate-500">Loading comparisons...</div>
+          )}
+          {admin && dataError && (
+            <div className="max-w-5xl mx-auto px-4 py-12 text-sm text-red-600">{dataError}</div>
+          )}
           <Routes>
-            <Route path="/" element={<Dashboard sessions={sessions} />} />
-            <Route path="/view/:id" element={<ComparisonView sessions={sessions} onUpdate={updateSession} />} />
-            <Route path="/create" element={<CreateComparison onSave={addSession} />} />
+            <Route path="/login" element={admin ? <Navigate to="/" replace /> : <Login />} />
+            <Route
+              path="/"
+              element={
+                envConfigured ? (
+                  <ProtectedRoute admin={admin} loading={loading}>
+                    <Dashboard sessions={sessions} onDelete={handleDeleteSession} />
+                  </ProtectedRoute>
+                ) : (
+                  <div className="max-w-5xl mx-auto px-4 py-12 text-sm text-slate-500">
+                    Configure Supabase environment variables to enable the admin dashboard.
+                  </div>
+                )
+              }
+            />
+            <Route
+              path="/view/:id"
+              element={
+                <ProtectedRoute admin={admin} loading={loading}>
+                  <ComparisonView sessions={sessions} onUpdate={updateSession} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/create"
+              element={
+                <ProtectedRoute admin={admin} loading={loading}>
+                  <CreateComparison onSave={addSession} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admins"
+              element={
+                <ProtectedRoute admin={admin} loading={loading}>
+                  {admin ? <AdminManagement currentAdmin={admin} /> : null}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/audit"
+              element={
+                <ProtectedRoute admin={admin} loading={loading}>
+                  <AuditLog />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </main>
 

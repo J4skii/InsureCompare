@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GoogleGenAI, Type } from "@google/genai";
 import { ComparisonSession, PlanType, ClientProfile, Provider } from '../types';
 import { Icons } from '../constants';
+import { parseComparisonWithAi } from '../services/supabaseService';
 
 interface CreateComparisonProps {
-  onSave: (session: ComparisonSession) => void;
+  onSave: (session: ComparisonSession) => Promise<void>;
 }
 
 const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
@@ -71,6 +71,10 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
     setIsAiLoading(true);
 
     try {
+      const data = await parseComparisonWithAi(rawText);
+      setProfile(prev => ({ ...prev, memberName: data.memberName ?? '', familyComposition: data.familyComposition ?? '' }));
+      setProviders(data.providers ?? []);
+      setCategories(data.categories ?? []);
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `
         Analyze the following insurance comparison text (which might be from an Excel or PDF OCR).
@@ -164,9 +168,9 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newSession: ComparisonSession = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       name: name || providers.map(p => p.underwriter).join(' vs '),
       date: new Date().toISOString().split('T')[0],
       type,
@@ -174,8 +178,13 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
       providers,
       categories
     };
-    onSave(newSession);
-    navigate(`/view/${newSession.id}`);
+    try {
+      await onSave(newSession);
+      navigate(`/view/${newSession.id}`);
+    } catch (error) {
+      console.error('Failed to save comparison', error);
+      alert('Unable to save comparison right now.');
+    }
   };
 
   return (

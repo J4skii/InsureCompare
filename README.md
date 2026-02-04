@@ -20,9 +20,7 @@ Supabase tables, policies, and edge functions are defined under `sql/` and `supa
 2. Set environment variables from `.env.example` in Vercel.
 3. Build command: `npm run build`, output directory: `dist`.
 4. Deploy and smoke-test login, comparison CRUD, audit log, and AI parsing.
-<div align="center">
-  <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+
 
 # InsureCompare - Professional Insurance Comparison System
 

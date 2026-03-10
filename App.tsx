@@ -4,32 +4,50 @@ import { HashRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import ComparisonView from './pages/ComparisonView';
 import CreateComparison from './pages/CreateComparison';
+import Clients from './pages/Clients';
+import AuditLogs from './pages/AuditLogs';
 import { ComparisonSession } from './types';
-import { INITIAL_COMPARISONS } from './constants';
+import { dataLayer } from './lib/data-layer';
 
 const App: React.FC = () => {
   const [sessions, setSessions] = useState<ComparisonSession[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem('insurance_comparisons_v2');
-    if (saved) {
-      setSessions(JSON.parse(saved));
-    } else {
-      setSessions(INITIAL_COMPARISONS);
-    }
+    const initData = async () => {
+      await dataLayer.init();
+      const initialSessions = await dataLayer.getSessions();
+      setSessions(initialSessions);
+      setIsLoading(false);
+    };
+    initData();
   }, []);
 
-  const addSession = (session: ComparisonSession) => {
-    const updated = [session, ...sessions];
-    setSessions(updated);
-    localStorage.setItem('insurance_comparisons_v2', JSON.stringify(updated));
+  const addSession = async (session: ComparisonSession) => {
+    const success = await dataLayer.addSession(session);
+    if (success) {
+      const updated = await dataLayer.getSessions();
+      setSessions(updated);
+    }
   };
 
-  const updateSession = (session: ComparisonSession) => {
-    const updated = sessions.map(s => s.id === session.id ? session : s);
-    setSessions(updated);
-    localStorage.setItem('insurance_comparisons_v2', JSON.stringify(updated));
+  const updateSession = async (session: ComparisonSession) => {
+    const success = await dataLayer.updateSession(session);
+    if (success) {
+      const updated = await dataLayer.getSessions();
+      setSessions(updated);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-[#C5A059] font-black uppercase tracking-[0.3em] animate-pulse">
+          Loading Praeto Portal...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Router>
@@ -46,6 +64,8 @@ const App: React.FC = () => {
             </Link>
             <nav className="flex items-center gap-6">
               <Link to="/" className="text-[11px] font-black text-white/70 hover:text-[#C5A059] transition-colors uppercase tracking-[0.2em]">Dashboard</Link>
+              <Link to="/clients" className="text-[11px] font-black text-white/70 hover:text-[#C5A059] transition-colors uppercase tracking-[0.2em]">Clients</Link>
+              <Link to="/audit" className="text-[11px] font-black text-white/70 hover:text-[#C5A059] transition-colors uppercase tracking-[0.2em]">Audit Logs</Link>
               <Link to="/create" className="bg-[#C5A059] text-white text-[11px] font-black uppercase tracking-[0.2em] px-6 py-3 rounded-xl hover:bg-[#b08e4d] shadow-lg transition-all flex items-center gap-2">
                 Create Comparison
               </Link>
@@ -58,6 +78,8 @@ const App: React.FC = () => {
             <Route path="/" element={<Dashboard sessions={sessions} />} />
             <Route path="/view/:id" element={<ComparisonView sessions={sessions} onUpdate={updateSession} />} />
             <Route path="/create" element={<CreateComparison onSave={addSession} />} />
+            <Route path="/clients" element={<Clients />} />
+            <Route path="/audit" element={<AuditLogs />} />
           </Routes>
         </main>
 

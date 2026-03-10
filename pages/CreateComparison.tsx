@@ -14,6 +14,8 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
   const [step, setStep] = useState(1);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [rawText, setRawText] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [dragActive, setDragActive] = useState(false);
 
   const [type, setType] = useState<PlanType>(PlanType.MEDICAL_AID);
   const [name, setName] = useState('');
@@ -66,35 +68,116 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
     })));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles([...files, ...Array.from(e.target.files)]);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFiles([...files, ...Array.from(e.dataTransfer.files)]);
+    }
+  };
+
+  const removeFile = (idx: number) => {
+    const next = [...files];
+    next.splice(idx, 1);
+    setFiles(next);
+  };
+
+  const fileToGenerativePart = async (file: File) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = (reader.result as string).split(',')[1];
+        resolve({
+          inlineData: {
+            data: base64data,
+            mimeType: file.type,
+          },
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleAiSmartImport = async () => {
-    if (!rawText.trim()) return;
+    if (!rawText.trim() && files.length === 0) return;
     setIsAiLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
+
+      const fileParts = await Promise.all(
+        files.map(file => fileToGenerativePart(file))
+      );
+
       const prompt = `
-        Analyze the following insurance comparison text (which might be from an Excel or PDF OCR).
-        The text may compare TWO or MORE providers.
-        Extract it into a structured JSON format matching this schema:
-        Extract it into a structured JSON format matching this schema:
-        - memberName: string
-        - surname: string
-        - idNumber: string
-        - age: string
-        - occupation: string
-        - familyComposition: string
-        - providers: Array of { underwriter: string, plan: string }
-        - categories: Array of { title: string, items: Array of { label: string, values: Array of string (same length as providers) } }
+        Analyze the following insurance comparison materials. 
+        You may have been provided with:
+        1. Raw text pasted from brochures.
+        2. Image or PDF files of insurance tables/brochures.
+
+        The documents provide details for TWO or MORE insurance providers and their respective plans/benefits.
         
-        Important: Ensure the 'values' array in each item matches the order and length of the 'providers' array.
+        Extract the data into a structured JSON format with this EXACT schema:
+        {
+          "memberName": "string",
+          "surname": "string",
+          "idNumber": "string",
+          "age": "string",
+          "occupation": "string",
+          "familyComposition": "string",
+          "providers": [
+            { "underwriter": "string", "plan": "string" }
+          ],
+          "categories": [
+            { 
+              "title": "string", 
+              "items": [
+                { "label": "string", "values": ["string (value for provider 1)", "string (value for provider 2)"] }
+              ]
+            }
+          ]
+        }
         
-        Text to process:
+        Rules:
+        - Identify all unique companies (underwriters) and plans mentioned.
+        - Create a column for each unique plan identified.
+        - Ensure the 'values' array length matches the 'providers' array length and follows the same order.
+        - Use "---" for missing values.
+        - Categories should group similar benefits (e.g., 'Hospital Benefits', 'Day-to-Day Benefits').
+        
+        Supplementary Text:
         ${rawText}
       `;
 
+      // Using Gemini 1.5 Flash for multimodal capabilities and speed (Free Tier friendly)
       const response = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
-        contents: prompt,
+        model: "gemini-1.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              ...(fileParts as any[])
+            ]
+          }
+        ],
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -197,27 +280,114 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
 
         <div className="p-8">
           {step === 1 && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-slate-800">AI Smart Import (Multi-Company Support)</h3>
-                <span className="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded uppercase">Smart v2</span>
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
+                    <Icons.Sparkles />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-800">AI Brochure Import</h3>
+                    <p className="text-xs text-slate-500 font-medium">Extracting data from PDF, Images, or Text</p>
+                  </div>
+                </div>
+                <span className="bg-blue-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-tighter">Multimodal v3</span>
               </div>
-              <p className="text-sm text-slate-500 mb-4">Paste text from multiple brochures or a comparison sheet. AI will detect how many companies are present and build the columns for you.</p>
-              <textarea
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-                placeholder="Paste multi-column benefit data here..."
-                className="w-full h-48 p-4 rounded-xl border-2 border-slate-200 focus:border-blue-500 outline-none font-mono text-sm leading-relaxed"
-              />
-              <div className="flex gap-4">
+
+              {/* Upload Section */}
+              <div
+                className={`relative group border-2 border-dashed rounded-3xl p-10 transition-all text-center ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50'}`}
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+              >
+                <input
+                  type="file"
+                  multiple
+                  accept="application/pdf,image/*"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+
+                <div className="flex flex-col items-center">
+                  <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                  </div>
+                  <h4 className="text-lg font-bold text-slate-800 mb-1">Upload Insurance Brochures</h4>
+                  <p className="text-sm text-slate-500 max-w-sm mx-auto">Drag and drop PDF files or benefit screenshots here, or click to browse.</p>
+                </div>
+              </div>
+
+              {/* File List */}
+              {files.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                  {files.map((file, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl group/file">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="p-2 bg-white rounded-lg border border-slate-100 text-blue-600 shrink-0">
+                          <Icons.FileText />
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-sm font-bold text-slate-700 truncate">{file.name}</p>
+                          <p className="text-[10px] font-medium text-slate-400 capitalize">{file.type.split('/')[1]} &bull; {(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeFile(idx)}
+                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      >
+                        <Icons.Trash />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Text Area (Supplementary) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Pasted Text Reference (Optional)</label>
+                  {rawText && <button onClick={() => setRawText('')} className="text-[10px] font-bold text-red-500 hover:underline">Clear Text</button>}
+                </div>
+                <textarea
+                  value={rawText}
+                  onChange={(e) => setRawText(e.target.value)}
+                  placeholder="Or paste table data here if you don't have a brochure file..."
+                  className="w-full h-32 p-4 rounded-2xl border-2 border-slate-200 focus:border-blue-500 outline-none font-mono text-sm leading-relaxed"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
                 <button
                   onClick={handleAiSmartImport}
-                  disabled={!rawText.trim() || isAiLoading}
-                  className="flex-1 bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  disabled={(files.length === 0 && !rawText.trim()) || isAiLoading}
+                  className="flex-[2] bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-700 shadow-2xl shadow-blue-200 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:shadow-none"
                 >
-                  {isAiLoading ? <span className="animate-pulse">Mapping Providers...</span> : <><Icons.Sparkles /> AI Smart Import</>}
+                  {isAiLoading ? (
+                    <div className="flex items-center gap-3">
+                      <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      <span>AI Analysing Brochures...</span>
+                    </div>
+                  ) : (
+                    <><Icons.Sparkles /> Run AI Smart Import</>
+                  )}
                 </button>
-                <button onClick={() => setStep(2)} className="px-8 bg-slate-100 text-slate-600 py-4 rounded-xl font-bold hover:bg-slate-200">Manual Setup</button>
+                <button
+                  onClick={() => setStep(2)}
+                  disabled={isAiLoading}
+                  className="flex-1 bg-slate-100 text-slate-600 py-5 rounded-2xl font-bold hover:bg-slate-200 transition-colors"
+                >
+                  Skip to Manual
+                </button>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex gap-3">
+                <div className="text-amber-500 shrink-0 mt-0.5"><Icons.Shield /></div>
+                <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                  <strong className="block mb-1">AI Tip:</strong>
+                  For the best result, upload clear brochures. AI will automatically build columns for every company it finds and group similar benefits together.
+                </p>
               </div>
             </div>
           )}

@@ -77,13 +77,15 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
   };
 
   const handleProviderChange = (idx: number, key: keyof Provider, value: string) => {
-    const newProviders = [...currentSession.providers];
-    newProviders[idx] = { ...newProviders[idx], [key]: value };
+    const newProviders = currentSession.providers.map((p, i) =>
+      i === idx ? { ...p, [key]: value } : p
+    );
     handleUpdate({ ...currentSession, providers: newProviders });
   };
 
   const handleAddProvider = () => {
-    const newProviders = [...currentSession.providers, { underwriter: 'New Provider', plan: 'New Plan' }];
+    const newProvider: Provider = { underwriter: 'New Provider', plan: 'New Plan' };
+    const newProviders = [...currentSession.providers, newProvider];
     const newCategories = currentSession.categories.map(cat => ({
       ...cat,
       items: cat.items.map(item => ({
@@ -96,70 +98,99 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
 
   const handleRemoveProvider = (idx: number) => {
     if (currentSession.providers.length <= 1) return;
-    const newProviders = [...currentSession.providers];
-    newProviders.splice(idx, 1);
+    const newProviders = currentSession.providers.filter((_, i) => i !== idx);
     const newCategories = currentSession.categories.map(cat => ({
       ...cat,
-      items: cat.items.map(item => {
-        const newValues = [...item.values];
-        newValues.splice(idx, 1);
-        return { ...item, values: newValues };
-      })
+      items: cat.items.map(item => ({
+        ...item,
+        values: item.values.filter((_, i) => i !== idx)
+      }))
     }));
     handleUpdate({ ...currentSession, providers: newProviders, categories: newCategories });
   };
 
   const handleBenefitLabelChange = (catIdx: number, itemIdx: number, value: string) => {
-    const newCategories = [...currentSession.categories];
-    newCategories[catIdx].items[itemIdx].label = value;
+    const newCategories = currentSession.categories.map((cat, ci) => {
+      if (ci !== catIdx) return cat;
+      return {
+        ...cat,
+        items: cat.items.map((item, ii) =>
+          ii === itemIdx ? { ...item, label: value } : item
+        )
+      };
+    });
     handleUpdate({ ...currentSession, categories: newCategories });
   };
 
   const handleBenefitValueChange = (catIdx: number, itemIdx: number, providerIdx: number, value: string) => {
-    const newCategories = [...currentSession.categories];
-    newCategories[catIdx].items[itemIdx].values[providerIdx] = value;
+    const newCategories = currentSession.categories.map((cat, ci) => {
+      if (ci !== catIdx) return cat;
+      return {
+        ...cat,
+        items: cat.items.map((item, ii) => {
+          if (ii !== itemIdx) return item;
+          const newValues = [...item.values];
+          newValues[providerIdx] = value;
+          return { ...item, values: newValues };
+        })
+      };
+    });
     handleUpdate({ ...currentSession, categories: newCategories });
   };
 
   const handleAddRow = (catIdx: number) => {
-    const newCategories = [...currentSession.categories];
-    newCategories[catIdx].items.push({
-      label: 'New Benefit',
-      values: Array(currentSession.providers.length).fill('')
+    const newCategories = currentSession.categories.map((cat, ci) => {
+      if (ci !== catIdx) return cat;
+      return {
+        ...cat,
+        items: [
+          ...cat.items,
+          { label: 'New Benefit', values: Array(currentSession.providers.length).fill('') }
+        ]
+      };
     });
     handleUpdate({ ...currentSession, categories: newCategories });
   };
 
   const handleRemoveRow = (catIdx: number, itemIdx: number) => {
-    const newCategories = [...currentSession.categories];
-    newCategories[catIdx].items.splice(itemIdx, 1);
+    const newCategories = currentSession.categories.map((cat, ci) => {
+      if (ci !== catIdx) return cat;
+      return {
+        ...cat,
+        items: cat.items.filter((_, ii) => ii !== itemIdx)
+      };
+    });
     handleUpdate({ ...currentSession, categories: newCategories });
   };
 
   const handleAddCategory = () => {
-    const newCategories = [...currentSession.categories, {
-      title: 'New Benefit Section',
-      items: [{ label: 'Benefit Item', values: Array(currentSession.providers.length).fill('') }]
-    }];
+    const newCategories: BenefitCategory[] = [
+      ...currentSession.categories,
+      {
+        title: 'New Benefit Section',
+        items: [{ label: 'Benefit Item', values: Array(currentSession.providers.length).fill('') }]
+      }
+    ];
     handleUpdate({ ...currentSession, categories: newCategories });
   };
 
   const handleRemoveCategory = (catIdx: number) => {
     if (!window.confirm("Are you sure you want to delete this entire section?")) return;
-    const newCategories = [...currentSession.categories];
-    newCategories.splice(catIdx, 1);
+    const newCategories = currentSession.categories.filter((_, i) => i !== catIdx);
     handleUpdate({ ...currentSession, categories: newCategories });
   };
 
   const handleCategoryTitleChange = (catIdx: number, value: string) => {
-    const newCategories = [...currentSession.categories];
-    newCategories[catIdx].title = value;
+    const newCategories = currentSession.categories.map((cat, i) =>
+      i === catIdx ? { ...cat, title: value } : cat
+    );
     handleUpdate({ ...currentSession, categories: newCategories });
   };
 
   const handleCategoryNotesChange = (catIdx: number, value: string) => {
-    const newCategories = [...currentSession.categories];
-    newCategories[catIdx].notes = value;
+    const newCategories = currentSession.categories.map((cat, i) =>
+      i === catIdx ? { ...cat, notes: value } : cat
+    );
     handleUpdate({ ...currentSession, categories: newCategories });
   };
 
@@ -177,6 +208,8 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
 
   const printReport = () => {
     setExporting(true);
+
+    // Minimal delay to ensure UI button updates ("Preparing PDF...")
     setTimeout(() => {
       window.print();
       setExporting(false);
@@ -276,7 +309,7 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 {isEditing && (
-                  <div className="mb-4">
+                  <div className="mb-4 print:hidden">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">Custom Report Title (Optional)</label>
                     <input
                       className="w-full max-w-2xl text-2xl font-black text-slate-900 uppercase tracking-tight border-2 border-slate-200 rounded-lg px-4 py-2 outline-none focus:border-[#C5A059] transition-colors"
@@ -293,65 +326,77 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                   {/* Name */}
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Name</span>
-                    {isEditing ? (
-                      <input
-                        className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-40"
-                        value={currentSession.clientProfile.memberName}
-                        onChange={(e) => handleProfileChange('memberName', e.target.value)}
-                        placeholder="Name"
-                      />
-                    ) : (
-                      <span className="text-sm font-black text-[#C5A059] uppercase">{currentSession.clientProfile.memberName}</span>
+                    {isEditing && (
+                      <div className="print:hidden">
+                        <input
+                          className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-40"
+                          value={currentSession.clientProfile.memberName}
+                          onChange={(e) => handleProfileChange('memberName', e.target.value)}
+                          placeholder="Name"
+                        />
+                      </div>
                     )}
+                    <span className={`${isEditing ? 'hidden print:block' : 'block'} text-sm font-black text-[#C5A059] uppercase`}>
+                      {currentSession.clientProfile.memberName}
+                    </span>
                   </div>
 
                   {/* Surname */}
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Surname</span>
-                    {isEditing ? (
-                      <input
-                        className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-40"
-                        value={currentSession.clientProfile.surname || ''}
-                        onChange={(e) => handleProfileChange('surname', e.target.value)}
-                        placeholder="Surname"
-                      />
-                    ) : (
-                      <span className="text-sm font-black text-[#C5A059] uppercase">{currentSession.clientProfile.surname || '---'}</span>
+                    {isEditing && (
+                      <div className="print:hidden">
+                        <input
+                          className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-40"
+                          value={currentSession.clientProfile.surname || ''}
+                          onChange={(e) => handleProfileChange('surname', e.target.value)}
+                          placeholder="Surname"
+                        />
+                      </div>
                     )}
+                    <span className={`${isEditing ? 'hidden print:block' : 'block'} text-sm font-black text-[#C5A059] uppercase`}>
+                      {currentSession.clientProfile.surname || '---'}
+                    </span>
                   </div>
 
                   {/* ID Number */}
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID No.</span>
-                    {isEditing ? (
-                      <input
-                        className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-40"
-                        value={currentSession.clientProfile.idNumber || ''}
-                        onChange={(e) => handleProfileChange('idNumber', e.target.value)}
-                        placeholder="ID Number"
-                      />
-                    ) : (
-                      <span className="text-sm font-black text-[#C5A059] uppercase">{currentSession.clientProfile.idNumber || '---'}</span>
+                    {isEditing && (
+                      <div className="print:hidden">
+                        <input
+                          className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-40"
+                          value={currentSession.clientProfile.idNumber || ''}
+                          onChange={(e) => handleProfileChange('idNumber', e.target.value)}
+                          placeholder="ID Number"
+                        />
+                      </div>
                     )}
+                    <span className={`${isEditing ? 'hidden print:block' : 'block'} text-sm font-black text-[#C5A059] uppercase`}>
+                      {currentSession.clientProfile.idNumber || '---'}
+                    </span>
                   </div>
 
                   {/* Age */}
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Age</span>
-                    {isEditing ? (
-                      <input
-                        className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-20"
-                        value={currentSession.clientProfile.age || ''}
-                        onChange={(e) => handleProfileChange('age', e.target.value)}
-                        placeholder="Age"
-                      />
-                    ) : (
-                      <span className="text-sm font-black text-[#C5A059] uppercase">{currentSession.clientProfile.age || '---'}</span>
+                    {isEditing && (
+                      <div className="print:hidden">
+                        <input
+                          className="text-sm font-black text-[#C5A059] uppercase border border-slate-200 rounded px-3 py-1 outline-none focus:border-[#C5A059] transition-colors w-20"
+                          value={currentSession.clientProfile.age || ''}
+                          onChange={(e) => handleProfileChange('age', e.target.value)}
+                          placeholder="Age"
+                        />
+                      </div>
                     )}
+                    <span className={`${isEditing ? 'hidden print:block' : 'block'} text-sm font-black text-[#C5A059] uppercase`}>
+                      {currentSession.clientProfile.age || '---'}
+                    </span>
                   </div>
                 </div>
                 {isEditing && (
-                  <div className="mt-4">
+                  <div className="mt-4 print:hidden">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">Comparison Type</label>
                     <select
                       className="text-sm font-bold text-slate-800 border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#C5A059] transition-colors"
@@ -367,16 +412,19 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
               </div>
               <div className="text-right">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Generated Date</span>
-                {isEditing ? (
-                  <input
-                    type="date"
-                    className="text-sm font-bold text-slate-800 border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#C5A059] transition-colors"
-                    value={currentSession.date}
-                    onChange={(e) => handleDateChange(e.target.value)}
-                  />
-                ) : (
-                  <span className="text-sm font-bold text-slate-800">{currentSession.date}</span>
+                {isEditing && (
+                  <div className="print:hidden">
+                    <input
+                      type="date"
+                      className="text-sm font-bold text-slate-800 border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#C5A059] transition-colors"
+                      value={currentSession.date}
+                      onChange={(e) => handleDateChange(e.target.value)}
+                    />
+                  </div>
                 )}
+                <span className={`${isEditing ? 'hidden print:block' : 'block'} text-sm font-bold text-slate-800`}>
+                  {currentSession.date}
+                </span>
               </div>
             </div>
           </div>
@@ -400,15 +448,18 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                 <div className="bg-[#111] text-white px-6 py-3.5 flex items-center justify-between rounded-t-xl print:rounded-none print:px-4 print:py-2 print:bg-black">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-8 bg-[#C5A059]"></div>
-                    {isEditing ? (
-                      <input
-                        className="bg-slate-800/80 text-white font-black uppercase tracking-[0.2em] text-sm px-3 py-1.5 rounded border border-white/20 outline-none w-80"
-                        value={cat.title}
-                        onChange={(e) => handleCategoryTitleChange(catIdx, e.target.value)}
-                      />
-                    ) : (
-                      <h3 className="font-black uppercase tracking-[0.2em] text-sm print:text-xs">{cat.title}</h3>
+                    {isEditing && (
+                      <div className="print:hidden">
+                        <input
+                          className="bg-slate-800/80 text-white font-black uppercase tracking-[0.2em] text-sm px-3 py-1.5 rounded border border-white/20 outline-none w-80"
+                          value={cat.title}
+                          onChange={(e) => handleCategoryTitleChange(catIdx, e.target.value)}
+                        />
+                      </div>
                     )}
+                    <div className={`${isEditing ? 'hidden print:block' : 'block'}`}>
+                      <h3 className="font-black uppercase tracking-[0.2em] text-sm">{cat.title}</h3>
+                    </div>
                   </div>
                   {isEditing && (
                     <button onClick={() => handleRemoveCategory(catIdx)} className="text-[10px] font-black uppercase bg-red-600 px-3 py-1.5 rounded hover:bg-red-700 transition-colors print:hidden">
@@ -430,8 +481,8 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                     />
                   </div>
                 )}
-                {!isEditing && cat.notes && cat.notes.trim() && (
-                  <div className="bg-blue-50 border-x border-slate-200 px-6 py-4 print:bg-white print:border print:rounded-none">
+                {cat.notes && cat.notes.trim() && (
+                  <div className={`${isEditing ? 'hidden print:block' : 'block'} bg-blue-50 border-x border-slate-200 px-6 py-4`}>
                     <p className="text-sm text-slate-700 italic leading-relaxed">{cat.notes}</p>
                   </div>
                 )}
@@ -444,8 +495,8 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                         {currentSession.providers.map((p, pIdx) => (
                           <th key={pIdx} className="p-5 text-center border-r border-slate-200 last:border-r-0 bg-white relative group/th">
                             <div className="flex flex-col gap-1.5">
-                              {isEditing ? (
-                                <>
+                              {isEditing && (
+                                <div className="print:hidden space-y-1">
                                   <input
                                     className={`w-full text-center bg-slate-50 border-2 rounded px-2 py-1.5 font-black text-slate-900 text-[11px] uppercase tracking-tighter ${!p.underwriter?.trim() ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
                                     value={p.underwriter}
@@ -461,13 +512,12 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                                   <button onClick={() => handleRemoveProvider(pIdx)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover/th:opacity-100 transition-opacity">
                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg>
                                   </button>
-                                </>
-                              ) : (
-                                <>
-                                  <span className="font-black text-slate-900 text-xs uppercase tracking-tight">{p.underwriter}</span>
-                                  <span className="text-[#C5A059] font-black text-[10px] uppercase tracking-widest">{p.plan}</span>
-                                </>
+                                </div>
                               )}
+                              <div className={`${isEditing ? 'hidden print:block' : 'block'} space-y-0.5`}>
+                                <div className="font-black text-slate-900 text-xs uppercase tracking-tight">{p.underwriter}</div>
+                                <div className="text-[#C5A059] font-black text-[10px] uppercase tracking-widest">{p.plan}</div>
+                              </div>
                             </div>
                           </th>
                         ))}
@@ -477,26 +527,38 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
                     <tbody className="divide-y divide-slate-100 print:divide-slate-300">
                       {cat.items.map((item, itemIdx) => (
                         <tr key={itemIdx} className="hover:bg-slate-50/50 transition-colors group/row">
-                          <td className="p-5 font-black text-slate-800 bg-slate-50 sticky left-0 z-10 border-r border-slate-200 backdrop-blur-sm print:p-2 print:text-[9px]">
-                            {isEditing ? (
-                              <input
-                                className={`w-full bg-white border-2 px-3 py-2 rounded font-bold text-slate-800 outline-none ${!item.label?.trim() ? 'border-red-500 bg-red-50' : 'border-slate-200 focus:border-[#C5A059]'}`}
-                                value={item.label}
-                                onChange={(e) => handleBenefitLabelChange(catIdx, itemIdx, e.target.value)}
-                                placeholder="Benefit label required"
-                              />
-                            ) : item.label}
+                          <td className="p-5 font-black text-slate-800 bg-slate-50 sticky left-0 z-10 border-r border-slate-200 print:p-2 print:text-[9px] print:bg-slate-50">
+                            {isEditing && (
+                              <div className="print:hidden">
+                                <input
+                                  className={`w-full bg-white border-2 px-3 py-2 rounded font-bold text-slate-800 outline-none ${!item.label?.trim() ? 'border-red-500 bg-red-50' : 'border-slate-200 focus:border-[#C5A059]'}`}
+                                  value={item.label}
+                                  onChange={(e) => handleBenefitLabelChange(catIdx, itemIdx, e.target.value)}
+                                  placeholder="Benefit label required"
+                                />
+                              </div>
+                            )}
+                            <div className={`${isEditing ? 'hidden print:block' : 'block'}`}>
+                              <span className="print:text-black print:font-bold">
+                                {item.label || '---'}
+                              </span>
+                            </div>
                           </td>
                           {item.values.map((val, pIdx) => (
-                            <td key={pIdx} className="p-5 text-center border-r border-slate-100 last:border-r-0 whitespace-pre-wrap leading-relaxed print:p-2 print:text-[9px]">
-                              {isEditing ? (
-                                <textarea
-                                  className={`w-full bg-white border-2 px-3 py-2 rounded min-h-[100px] text-xs outline-none ${!val?.trim() ? 'border-amber-400 bg-amber-50' : 'border-slate-200 focus:border-[#C5A059]'}`}
-                                  value={val}
-                                  onChange={(e) => handleBenefitValueChange(catIdx, itemIdx, pIdx, e.target.value)}
-                                  placeholder="Value recommended"
-                                />
-                              ) : val || <span className="text-slate-300 italic">No Benefit Specified</span>}
+                            <td key={pIdx} className="p-5 text-center border-r border-slate-100 last:border-r-0 whitespace-pre-wrap leading-relaxed print:p-2 print:text-[9px] text-slate-800">
+                              {isEditing && (
+                                <div className="print:hidden">
+                                  <textarea
+                                    className={`w-full bg-white border-2 px-3 py-2 rounded min-h-[100px] text-xs outline-none ${!val?.trim() ? 'border-amber-400 bg-amber-50' : 'border-slate-200 focus:border-[#C5A059]'}`}
+                                    value={val}
+                                    onChange={(e) => handleBenefitValueChange(catIdx, itemIdx, pIdx, e.target.value)}
+                                    placeholder="Value recommended"
+                                  />
+                                </div>
+                              )}
+                              <div className={`${isEditing ? 'hidden print:block' : 'block'}`}>
+                                {val || <span className="text-slate-300 print:text-slate-500 italic">No Benefit Specified</span>}
+                              </div>
                             </td>
                           ))}
                           {isEditing && (
@@ -601,6 +663,12 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
           .text-\\[\\#C5A059\\] { color: #C5A059 !important; }
           .bg-\\[\\#C5A059\\] { background-color: #C5A059 !important; }
           .border-\\[\\#C5A059\\] { border-color: #C5A059 !important; }
+          .text-slate-900 { color: #000000 !important; }
+          .text-slate-800 { color: #000000 !important; }
+          .text-slate-700 { color: #333333 !important; }
+          .text-slate-600 { color: #555555 !important; }
+          .text-slate-400 { color: #888888 !important; }
+          .text-white { color: #ffffff !important; }
           tr { page-break-inside: avoid !important; }
           table { width: 100% !important; table-layout: fixed !important; }
         }
@@ -627,11 +695,18 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ sessions, onUpdate }) =
 const ProfileItem: React.FC<{ label: string; value: string; isEditing: boolean; onEdit: (v: string) => void }> = ({ label, value, isEditing, onEdit }) => (
   <div className="flex flex-col">
     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 print:text-[8px] print:mb-1">{label}</span>
-    {isEditing ? (
-      <input className="text-sm font-bold text-slate-800 border border-slate-200 px-3 py-2 rounded-lg focus:border-[#C5A059] outline-none transition-colors" value={value} onChange={(e) => onEdit(e.target.value)} />
-    ) : (
-      <span className="text-sm font-black text-slate-800 uppercase tracking-tight print:text-xs">{value || '---'}</span>
+    {isEditing && (
+      <div className="print:hidden">
+        <input
+          className="w-full text-sm font-bold text-slate-800 border border-slate-200 px-3 py-2 rounded-lg focus:border-[#C5A059] outline-none transition-colors"
+          value={value}
+          onChange={(e) => onEdit(e.target.value)}
+        />
+      </div>
     )}
+    <div className={`${isEditing ? 'hidden print:block' : 'block'}`}>
+      <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{value || '---'}</span>
+    </div>
   </div>
 );
 

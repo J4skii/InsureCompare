@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
 import type {
     DatabaseUser,
     DatabaseClient,
@@ -13,12 +13,20 @@ import type {
 
 // ==================== User API ====================
 
+const getSupabase = () => {
+    if (!supabase || !isSupabaseConfigured()) {
+        throw new Error('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+    }
+    return supabase;
+};
+
 export const userApi = {
     async getCurrentUser(): Promise<DatabaseUser | null> {
-        const { data, error } = await supabase.auth.getUser();
+        const sb = getSupabase();
+        const { data, error } = await sb.auth.getUser();
         if (error || !data?.user) return null;
 
-        const { data: user } = await supabase
+        const { data: user } = await sb
             .from('users')
             .select('*')
             .eq('id', data.user.id)
@@ -28,7 +36,8 @@ export const userApi = {
     },
 
     async createUser(email: string, name: string): Promise<DatabaseUser | null> {
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        const sb = getSupabase();
+        const { data: authData, error: authError } = await sb.auth.admin.createUser({
             email,
             email_confirm: true,
             user_metadata: { name },
@@ -39,7 +48,7 @@ export const userApi = {
             return null;
         }
 
-        const { data: user, error } = await supabase
+        const { data: user, error } = await sb
             .from('users')
             .insert({
                 id: authData.user.id,
@@ -58,7 +67,8 @@ export const userApi = {
     },
 
     async signInWithEmail(email: string): Promise<{ user: DatabaseUser; session: unknown } | null> {
-        const { data, error } = await supabase.auth.signInWithOtp({
+        const sb = getSupabase();
+        const { data, error } = await sb.auth.signInWithOtp({
             email,
         });
 
@@ -71,10 +81,12 @@ export const userApi = {
     },
 
     async signOut(): Promise<void> {
+        if (!supabase || !isSupabaseConfigured()) return;
         await supabase.auth.signOut();
     },
 
     async getSession(): Promise<unknown> {
+        if (!supabase || !isSupabaseConfigured()) return null;
         const { data } = await supabase.auth.getSession();
         return data?.session;
     },
@@ -84,7 +96,8 @@ export const userApi = {
 
 export const clientApi = {
     async getAll(): Promise<DatabaseClient[]> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('clients')
             .select('*')
             .order('created_at', { ascending: false });
@@ -98,7 +111,8 @@ export const clientApi = {
     },
 
     async getById(id: string): Promise<DatabaseClient | null> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('clients')
             .select('*')
             .eq('id', id)
@@ -113,7 +127,8 @@ export const clientApi = {
     },
 
     async create(client: Omit<DatabaseClient, 'id' | 'created_at' | 'updated_at'>): Promise<DatabaseClient | null> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('clients')
             .insert(client)
             .select()
@@ -128,7 +143,8 @@ export const clientApi = {
     },
 
     async update(id: string, updates: Partial<DatabaseClient>): Promise<DatabaseClient | null> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('clients')
             .update(updates)
             .eq('id', id)
@@ -144,7 +160,8 @@ export const clientApi = {
     },
 
     async delete(id: string): Promise<boolean> {
-        const { error } = await supabase
+        const sb = getSupabase();
+        const { error } = await sb
             .from('clients')
             .delete()
             .eq('id', id);
@@ -158,7 +175,8 @@ export const clientApi = {
     },
 
     async search(query: string): Promise<DatabaseClient[]> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('clients')
             .select('*')
             .or(`member_name.ilike.%${query}%,surname.ilike.%${query}%,id_number.ilike.%${query}%`)
@@ -177,7 +195,8 @@ export const clientApi = {
 
 export const comparisonApi = {
     async getAll(): Promise<DatabaseComparisonSession[]> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('comparison_sessions')
             .select('*')
             .order('created_at', { ascending: false });
@@ -191,7 +210,8 @@ export const comparisonApi = {
     },
 
     async getById(id: string): Promise<DatabaseComparisonSession | null> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('comparison_sessions')
             .select('*')
             .eq('id', id)
@@ -208,7 +228,8 @@ export const comparisonApi = {
     async create(
         session: Omit<DatabaseComparisonSession, 'id' | 'created_at' | 'updated_at'>
     ): Promise<DatabaseComparisonSession | null> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('comparison_sessions')
             .insert(session)
             .select()
@@ -226,7 +247,8 @@ export const comparisonApi = {
         id: string,
         updates: Partial<DatabaseComparisonSession>
     ): Promise<DatabaseComparisonSession | null> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('comparison_sessions')
             .update(updates)
             .eq('id', id)
@@ -242,7 +264,8 @@ export const comparisonApi = {
     },
 
     async delete(id: string): Promise<boolean> {
-        const { error } = await supabase
+        const sb = getSupabase();
+        const { error } = await sb
             .from('comparison_sessions')
             .delete()
             .eq('id', id);
@@ -256,7 +279,8 @@ export const comparisonApi = {
     },
 
     async getByClientId(clientId: string): Promise<DatabaseComparisonSession[]> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('comparison_sessions')
             .select('*')
             .eq('client_id', clientId)
@@ -275,7 +299,8 @@ export const comparisonApi = {
 
 export const auditApi = {
     async getAll(): Promise<DatabaseAuditLog[]> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('audit_logs')
             .select('*')
             .order('created_at', { ascending: false })
@@ -290,7 +315,8 @@ export const auditApi = {
     },
 
     async getBySessionId(sessionId: string): Promise<DatabaseAuditLog[]> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('audit_logs')
             .select('*')
             .eq('session_id', sessionId)
@@ -305,7 +331,8 @@ export const auditApi = {
     },
 
     async getByClientId(clientId: string): Promise<DatabaseAuditLog[]> {
-        const { data, error } = await supabase
+        const sb = getSupabase();
+        const { data, error } = await sb
             .from('audit_logs')
             .select('*')
             .eq('client_id', clientId)
@@ -326,7 +353,8 @@ export const auditApi = {
         sessionId?: string,
         clientId?: string
     ): Promise<boolean> {
-        const { error } = await supabase.from('audit_logs').insert({
+        const sb = getSupabase();
+        const { error } = await sb.from('audit_logs').insert({
             action,
             old_data: oldData || null,
             new_data: newData || null,
@@ -352,11 +380,12 @@ export const dataApi = {
         sessions: DatabaseComparisonSession[];
         auditLogs: DatabaseAuditLog[];
     }> {
+        const sb = getSupabase();
         const [users, clients, sessions, auditLogs] = await Promise.all([
-            supabase.from('users').select('*'),
-            supabase.from('clients').select('*'),
-            supabase.from('comparison_sessions').select('*'),
-            supabase.from('audit_logs').select('*'),
+            sb.from('users').select('*'),
+            sb.from('clients').select('*'),
+            sb.from('comparison_sessions').select('*'),
+            sb.from('audit_logs').select('*'),
         ]);
 
         return {
@@ -373,16 +402,17 @@ export const dataApi = {
             sessions?: Omit<DatabaseComparisonSession, 'id' | 'created_at' | 'updated_at'>[];
         }
     ): Promise<{ clients: number; sessions: number }> {
+        const sb = getSupabase();
         let clientsCount = 0;
         let sessionsCount = 0;
 
         if (data.clients && data.clients.length > 0) {
-            const { count } = await supabase.from('clients').insert(data.clients);
+            const { count } = await sb.from('clients').insert(data.clients);
             clientsCount = count || 0;
         }
 
         if (data.sessions && data.sessions.length > 0) {
-            const { count } = await supabase.from('comparison_sessions').insert(data.sessions);
+            const { count } = await sb.from('comparison_sessions').insert(data.sessions);
             sessionsCount = count || 0;
         }
 

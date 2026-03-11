@@ -117,10 +117,25 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
 
   const handleAiSmartImport = async () => {
     if (!rawText.trim() && files.length === 0) return;
+
+    // Explicit API Key check to provide better user feedback
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey || apiKey === 'your-gemini-api-key') {
+      alert("API KEY MISSING: Please create a .env file and add VITE_GEMINI_API_KEY=your_key. See .env.example for reference.");
+      return;
+    }
+
     setIsAiLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey });
+
+      // Check file sizes
+      const MAX_TOTAL_SIZE = 18 * 1024 * 1024; // 18MB safety limit for base64
+      const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+      if (totalSize > MAX_TOTAL_SIZE) {
+        throw new Error("TOTAL_SIZE_EXCEEDED");
+      }
 
       const fileParts = await Promise.all(
         files.map(file => fileToGenerativePart(file))
@@ -239,13 +254,23 @@ const CreateComparison: React.FC<CreateComparisonProps> = ({ onSave }) => {
       setProviders(data.providers);
       setCategories(data.categories);
       setStep(3);
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Import Error:", err);
-      alert("AI was unable to parse that text accurately. Please try a clearer text selection.");
+
+      if (err.message === "TOTAL_SIZE_EXCEEDED") {
+        alert("The uploaded files are too large (limit 15-20MB). Please try taking a screenshot of the benefit table instead, or upload a smaller PDF.");
+      } else if (err.status === 403 || err.status === 401) {
+        alert("AI Authentication Failed: Please check if your Gemini API Key is valid and active.");
+      } else if (err.message?.includes("fetch")) {
+        alert("Network Error: Could not reach the AI service. Please check your internet connection.");
+      } else {
+        alert("AI was unable to parse that document. Tip: If the PDF is very complex, try uploading a screenshot of the benefit table instead!");
+      }
     } finally {
       setIsAiLoading(false);
     }
   };
+
 
   const handleSave = () => {
     const newSession: ComparisonSession = {

@@ -19,7 +19,8 @@ Supabase tables, policies, and edge functions are defined under `sql/` and `supa
 1. Create a Vercel project linked to this repo.
 2. Set environment variables from `.env.example` in Vercel.
 3. Build command: `npm run build`, output directory: `dist`.
-4. Deploy and smoke-test login, comparison CRUD, audit log, and AI parsing.
+4. Deploy and smoke-test login, comparison CRUD, audit log, and AI parsing (using the optimized prompt).
+
 
 
 # InsureCompare - Professional Insurance Comparison System
@@ -70,14 +71,14 @@ A professional internal system for insurance advisors to compare medical aid, ho
 
 3. Set up environment variables:
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
 
-4. Configure your environment variables in `.env.local`:
+4. Configure your environment variables in `.env`:
    ```env
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key
-   VITE_GEMINI_API_KEY=your-gemini-api-key
+   VITE_GEMINI_API_KEY=your_actual_key
    ```
 
 5. Start the development server:
@@ -91,7 +92,21 @@ A professional internal system for insurance advisors to compare medical aid, ho
 2. Go to the SQL Editor in Supabase
 3. Copy and run the contents of `supabase/schema.sql`
 4. Get your project URL and anon key from Settings → API
-5. Add them to your `.env.local`
+5. Add them to your `.env`
+
+## AI Smart Import (Best Practices)
+
+To ensure the best results with the Gemini AI Import:
+
+1. **Optimized for South Africa**: The AI is specifically tuned for South African medical aid terminology (DHR, MSA, Thresholds).
+2. **Screenshot over PDF**: For complex 2026 brochures (like Discovery or Bonitas), it is **always better** to take a clear screenshot of the *benefit table page* and upload that.
+3. **Limit PDF Length**: Avoid uploading 50+ page PDFs. If you must use a PDF, only upload the 2-3 pages containing the actual data to avoid exceeding AI token limits.
+4. **Pasted Text**: You can also copy and paste table data directly if formatting is clean.
+
+## Security Reminder
+
+> [!IMPORTANT]
+> **NEVER commit your `.env` file.** It is excluded via `.gitignore` to prevent sensitive API keys (Gemini, Supabase) from being exposed on GitHub. Always use `.env.example` as a template for new collaborators.
 
 ## Project Structure
 
